@@ -2,77 +2,91 @@
 
 Интеллектуальное веб-приложение для управления задачами с автоматическим анализом, матрицей Эйзенхауэра и расстановкой приоритетов на базе **Google Gemini API** (`@google/genai`).
 
+🌐 **Production URL (Vercel):** [https://smart-ai-todolist.vercel.app](https://smart-ai-todolist.vercel.app)  
+🐘 **Database (Neon PostgreSQL):** `smart-ai-todolist` на базе Neon Serverless Driver  
+🚀 **Хостинг:** Vercel (Next.js 15 App Router)
+
 ![Smart ToDoList](https://img.shields.io/badge/Gemini_2.5_Flash-Ready-8b5cf6?style=for-the-badge)
+![Vercel](https://img.shields.io/badge/Vercel_CLI-Deployed-000000?style=for-the-badge&logo=vercel)
+![Neon](https://img.shields.io/badge/Neon_Postgres-Connected-00e599?style=for-the-badge&logo=postgresql)
 ![Next.js 15](https://img.shields.io/badge/Next.js-15-000000?style=for-the-badge&logo=nextdotjs)
-![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6?style=for-the-badge&logo=typescript)
-![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.4-38bdf8?style=for-the-badge&logo=tailwindcss)
 
 ---
 
 ## 🌟 Ключевые возможности
 
-1. **✨ Умное добавление (Smart Input & AI Auto-fill):**
-   - Введите задачу естественным языком, например: *"Подготовить квартальный отчет к пятнице"*.
-   - Gemini автоматически выделит дедлайн, назначит приоритет, оценит затраты времени и сгенерирует теги.
-2. **🪄 «Разобрать с AI» (Magic Sort & Prioritization):**
-   - Глобальная перегруппировка активных задач по матрице Эйзенхауэра.
-   - Вычисление индекса важности `aiScore` (1–100) и мотивирующее объяснение `aiReasoning` для каждого пункта.
-   - Защита от перегрузки (Rate limiting / Cooldown на 30 секунд).
-   - Эффект свечения карточек во время анализа (Shimmer Effect) и плавная анимация перестроения (Framer Motion).
-3. **🧩 Декомпозиция сложных задач на подзадачи:**
-   - Кнопка *«Разбить на шаги»* генерирует 3–5 конкретных шагов для выполнения задачи за один подход.
-4. **📊 Два режима отображения:**
+1. **🔐 Регистрация и авторизация (Auth):**
+   - Полноценная аутентификация пользователей с хешированием паролей (`bcryptjs`) и защищенными сессиями через JWT (`jose`) в HTTP-only cookies.
+   - Задачи каждого пользователя изолированы и сохраняются в облачной реляционной базе данных **Neon PostgreSQL**.
+2. **🔑 Персональный Google Gemini API Key (BYOK):**
+   - Каждый пользователь после регистрации привязывает свой собственный бесплатный `GEMINI_API_KEY` (через модальное окно или настройки).
+   - Ключ сохраняется в профиле пользователя в базе данных Neon и используется для выполнения AI-запросов (приоритезация, декомпозиция, NLP).
+   - Проверка валидности ключа в реальном времени.
+3. **✨ Умное добавление (Smart Input & AI Auto-fill):**
+   - Ввод задачи естественным языком (*«Подготовить квартальный отчет к пятнице»*).
+   - Gemini автоматически рассчитывает дедлайн, выставляет приоритет, квадрант матрицы, теги и оценку времени.
+4. **🪄 «Разобрать с AI» (Magic Sort & Prioritization):**
+   - Глобальная перегруппировка активных задач по матрице Эйзенхауэра с расчетом индекса `aiScore` (1–100) и мотивационного пояснения `aiReasoning`.
+   - Анимация свечения карточек во время анализа (Shimmer Effect) и плавное анимированное перестроение (Framer Motion).
+   - Защита от спама (Cooldown / Rate limit на 30 секунд).
+5. **🧩 Декомпозиция сложных задач на подзадачи:**
+   - Кнопка *«Разбить на шаги»* генерирует 3–5 конкретных подзадач с чек-листом и прогресс-баром.
+6. **📊 Два режима отображения:**
    - **Классический список:** Сортировка по AI-рейтингу (`aiScore`), дедлайнам или приоритету.
-   - **Матрица Эйзенхауэра (2x2):** Разделение на 4 квадранта (Q1: Сделать сейчас, Q2: Запланировать, Q3: Делегировать, Q4: Исключить) с возможностью быстрого перемещения.
-5. **⚙️ Гибкая настройка API ключа (Server-Side & BYOK):**
-   - Серверный режим: переменная окружения `GEMINI_API_KEY` в `.env.local`.
-   - Режим BYOK (Bring Your Own Key): ввод пользовательского ключа в окне настроек с сохранением в `localStorage` и кнопкой проверки подключения.
-   - Офлайн-эвристика: если ключ не задан, приложение работает полноценно благодаря локальному эвристическому анализатору.
-6. **🌓 Темная и светлая тема:** адаптивный дизайн с поддержкой системных настроек.
+   - **Матрица Эйзенхауэра (2x2):** 4 квадранта (Q1: Сделать сейчас, Q2: Запланировать, Q3: Делегировать, Q4: Исключить) с возможностью быстрого перемещения задач между ними.
+7. **🌓 Темная и светлая тема.**
 
 ---
 
 ## 🛠 Технический стек
 
-* **Frontend:** React 19, Next.js 15 (App Router), TypeScript, Tailwind CSS, Lucide Icons, Framer Motion, Zustand.
-* **Backend:** Next.js API Routes (`/api/ai/*`, `/api/tasks/*`).
+* **Frontend & Backend:** Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS, Lucide Icons, Framer Motion, Zustand.
+* **База данных:** **Neon PostgreSQL** через `@neondatabase/serverless`.
+* **Хостинг:** **Vercel** через Vercel CLI.
 * **AI SDK:** Официальный `@google/genai` с поддержкой Structured Outputs (`responseSchema`), модель `gemini-2.5-flash` (с fallback на `gemini-2.0-flash`).
-* **Хранилище:** Локальное сохранение состояния (`localStorage`) + серверные REST эндпоинты.
+* **Безопасность:** `bcryptjs` для хеширования паролей, `jose` для JWT-токенов в HTTP-only cookies.
 
 ---
 
-## 🚀 Быстрый старт
+## 💻 Работа через CLI
 
-### 1. Установка зависимостей
+### 1. Neon CLI (`neonctl`)
 ```bash
-npm install
+# Просмотр проектов
+npx neonctl projects list
+
+# Получение строки подключения
+npx neonctl connection-string --project-id withered-art-81829905
 ```
 
-### 2. Настройка API-ключа (опционально)
-Создайте файл `.env.local` в корне проекта:
-```env
-GEMINI_API_KEY=ваш_ключ_от_Google_AI_Studio
-```
-*(Или введите ключ прямо в приложении через меню Настройки ⚙️)*
-
-### 3. Запуск сервера разработки
+### 2. Vercel CLI (`vercel`)
 ```bash
-npm run dev
-```
-Откройте [http://localhost:3000](http://localhost:3000) в браузере.
+# Связывание проекта с Vercel
+npx vercel link
 
-### 4. Сборка для Production
-```bash
-npm run build
-npm start
+# Управление переменными окружения
+npx vercel env ls
+npx vercel env pull .env.local
+
+# Деплой в продакшен
+npx vercel --prod
 ```
 
 ---
 
-## 📐 Архитектура API
+## 🚀 Локальный запуск
 
-* `POST /api/ai/prioritize` — пакетный анализ активных задач и расчет матрицы Эйзенхауэра (`responseSchema`).
-* `POST /api/ai/decompose` — разбиение задачи на 3–5 шагов.
-* `POST /api/ai/quick-add` — NLP-парсинг текста для умного автозаполнения.
-* `POST /api/ai/status` — валидация работоспособности API-ключа.
-* `GET / POST / PATCH / DELETE /api/tasks` — REST API для управления задачами.
+1. Установка зависимостей:
+   ```bash
+   npm install
+   ```
+2. Настройка переменных в `.env.local`:
+   ```env
+   DATABASE_URL="postgresql://neondb_owner:npg_...ep-muddy-bar-ba35o4yx.c-8.eu-central-1.aws.neon.tech/neondb?sslmode=require"
+   JWT_SECRET="smart-todolist-super-secret-jwt-key-2026-secure"
+   ```
+3. Запуск сервера:
+   ```bash
+   npm run dev
+   ```
+   Откройте [http://localhost:3000](http://localhost:3000).
