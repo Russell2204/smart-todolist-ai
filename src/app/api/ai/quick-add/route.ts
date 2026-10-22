@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { quickAddWithAI } from '@/lib/gemini';
+import { getCurrentUser } from '@/lib/auth';
 
 export async function POST(req: NextRequest) {
   try {
-    const customApiKey = req.headers.get('x-gemini-api-key') || undefined;
+    const user = await getCurrentUser(req);
     const body = await req.json();
     const { text, model, useFallbackIfNoKey } = body as {
       text: string;
@@ -15,8 +16,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Текст задачи не указан' }, { status: 400 });
     }
 
+    const effectiveApiKey =
+      req.headers.get('x-gemini-api-key') ||
+      user?.gemini_api_key ||
+      process.env.GEMINI_API_KEY ||
+      undefined;
+
+    const effectiveModel = model || user?.gemini_model || 'gemini-2.5-flash';
+
     try {
-      const result = await quickAddWithAI(text.trim(), customApiKey, model);
+      const result = await quickAddWithAI(text.trim(), effectiveApiKey, effectiveModel);
       return NextResponse.json({
         success: true,
         data: result,
@@ -26,11 +35,10 @@ export async function POST(req: NextRequest) {
       console.warn('AI QuickAdd Error:', aiError?.message);
 
       if (useFallbackIfNoKey || aiError?.message === 'API_KEY_MISSING') {
-        // Smart heuristic parse for simple terms
         const raw = text.trim();
         const isUrgent = /срочно|сегодня|asap|критично|быстро|важно/i.test(raw);
         const hasWork = /отчет|проект|клиент|совещание|дедлайн|договор/i.test(raw);
-        
+
         return NextResponse.json({
           success: true,
           data: {
@@ -44,7 +52,9 @@ export async function POST(req: NextRequest) {
             aiReasoning: isUrgent ? 'Определены ключевые слова высокой срочности.' : 'Стандартный приоритет.'
           },
           source: 'heuristic',
-          warning: 'API-ключ не настроен. Создано с базовым анализом.'
+          warning: aiError?.message === 'API_KEY_MISSING'
+            ? 'API-ключ не настроен в профиле. Задача добавлена с базовым анализом.'
+            : 'Создано с базовым анализом.'
         });
       }
 

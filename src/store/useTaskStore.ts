@@ -9,6 +9,15 @@ import {
   INITIAL_TASKS 
 } from '@/lib/storage';
 
+export interface UserProfile {
+  id: string;
+  email: string;
+  name: string | null;
+  hasApiKey: boolean;
+  apiKey?: string;
+  geminiModel?: string;
+}
+
 export interface ToastMessage {
   id: string;
   type: 'success' | 'error' | 'warning' | 'info';
@@ -25,6 +34,14 @@ interface TaskState {
   filterPriority: PriorityLevel | 'all';
   filterQuadrant: EisenhowerQuadrant | 'all';
   
+  // Auth state
+  currentUser: UserProfile | null;
+  isAuthenticated: boolean;
+  isAuthLoading: boolean;
+  isAuthModalOpen: boolean;
+  authMode: 'login' | 'register';
+  isApiKeyModalOpen: boolean;
+
   // AI states
   isAiLoading: boolean;
   aiActionType: 'prioritizing' | 'decomposing' | 'quick-add' | null;
@@ -32,15 +49,11 @@ interface TaskState {
   lastPrioritizedTime: number | null;
   cooldownRemaining: number;
 
-  // Settings
+  // Settings & Modals
   settings: AppSettings;
   isSettingsOpen: boolean;
-  
-  // Modals
   editingTask: Task | null;
   decomposingTaskId: string | null;
-  
-  // Toast notifications
   toasts: ToastMessage[];
 
   // Actions
@@ -52,9 +65,19 @@ interface TaskState {
   setFilterPriority: (priority: PriorityLevel | 'all') => void;
   setFilterQuadrant: (quadrant: EisenhowerQuadrant | 'all') => void;
   setIsSettingsOpen: (open: boolean) => void;
+  setIsAuthModalOpen: (open: boolean, mode?: 'login' | 'register') => void;
+  setIsApiKeyModalOpen: (open: boolean) => void;
   setEditingTask: (task: Task | null) => void;
   setDecomposingTaskId: (id: string | null) => void;
   
+  // Auth actions
+  checkAuthStatus: () => Promise<void>;
+  loginUser: (email: string, pass: string) => Promise<boolean>;
+  registerUser: (email: string, pass: string, name?: string) => Promise<boolean>;
+  logoutUser: () => Promise<void>;
+  saveUserApiKey: (apiKey: string, model?: string) => Promise<boolean>;
+  loadServerTasks: () => Promise<void>;
+
   // CRUD
   addTask: (task: Partial<Task>, autoAnalyze?: boolean) => Promise<void>;
   updateTask: (id: string, updates: Partial<Task>) => void;
@@ -84,7 +107,6 @@ interface TaskState {
 }
 
 export const useTaskStore = create<TaskState>((set, get) => {
-  // Load initial data on store creation
   const initialTasks = typeof window !== 'undefined' ? loadStoredTasks() : INITIAL_TASKS;
   const initialSettings = typeof window !== 'undefined' ? loadStoredSettings() : {
     apiKey: '',
@@ -103,6 +125,13 @@ export const useTaskStore = create<TaskState>((set, get) => {
     filterPriority: 'all',
     filterQuadrant: 'all',
     
+    currentUser: null,
+    isAuthenticated: false,
+    isAuthLoading: true,
+    isAuthModalOpen: false,
+    authMode: 'login',
+    isApiKeyModalOpen: false,
+
     isAiLoading: false,
     aiActionType: null,
     activeProcessingTaskId: null,
@@ -123,6 +152,8 @@ export const useTaskStore = create<TaskState>((set, get) => {
     setFilterPriority: (filterPriority) => set({ filterPriority }),
     setFilterQuadrant: (filterQuadrant) => set({ filterQuadrant }),
     setIsSettingsOpen: (isSettingsOpen) => set({ isSettingsOpen }),
+    setIsAuthModalOpen: (isAuthModalOpen, mode = 'login') => set({ isAuthModalOpen, authMode: mode }),
+    setIsApiKeyModalOpen: (isApiKeyModalOpen) => set({ isApiKeyModalOpen }),
     setEditingTask: (editingTask) => set({ editingTask }),
     setDecomposingTaskId: (decomposingTaskId) => set({ decomposingTaskId }),
 
@@ -132,7 +163,6 @@ export const useTaskStore = create<TaskState>((set, get) => {
         toasts: [...state.toasts, { id, message, type }],
       }));
 
-      // Auto dismiss after 4.5s
       setTimeout(() => {
         get().removeToast(id);
       }, 4500);
@@ -151,7 +181,212 @@ export const useTaskStore = create<TaskState>((set, get) => {
       }
     },
 
+    // Check user session
+    checkAuthStatus: async () => {
+      set({ isAuthLoading: true });
+      try {
+        const res = await fetch('/api/auth/me');
+        const data = await res.json();
+        if (data.authenticated && data.user) {
+          set({
+            currentUser: data.user,
+            isAuthenticated: true,
+            settings: {
+              ...get().settings,
+              apiKey: data.user.apiKey || get().settings.apiKey,
+              model: data.user.geminiModel || get().settings.model,
+            }
+          });
+          // Load tasks from Neon DB for this user
+          await get().loadServerTasks();
+
+          // If user has no API key set yet, prompt them gently
+          if (!data.user.hasApiKey && !get().settings.apiKey) {
+            set({ isApiKeyModalOpen: true });
+          }
+        } else {
+          set({ currentUser: null, isAuthenticated: false });
+        }
+      } catch (e) {
+        console.warn('Auth check error:', e);
+      } finally {
+        set({ isAuthLoading: false });
+      }
+    },
+
+    loginUser: async (email, password) => {
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          get().addToast(data.error || 'Ошибка входа', 'error');
+          return false;
+        }
+
+        set({
+          currentUser: data.user,
+          isAuthenticated: true,
+          isAuthModalOpen: false,
+          settings: {
+            ...get().settings,
+            apiKey: data.user.apiKey || get().settings.apiKey,
+            model: data.user.geminiModel || get().settings.model,
+          }
+        });
+
+        get().addToast(`С возвращением, ${data.user.name || data.user.email}!`, 'success');
+        await get().loadServerTasks();
+
+        if (!data.user.hasApiKey) {
+          set({ isApiKeyModalOpen: true });
+        }
+        return true;
+      } catch (err: any) {
+        get().addToast(err?.message || 'Ошибка сети', 'error');
+        return false;
+      }
+    },
+
+    registerUser: async (email, password, name) => {
+      try {
+        const res = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password, name }),
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          get().addToast(data.error || 'Ошибка регистрации', 'error');
+          return false;
+        }
+
+        set({
+          currentUser: data.user,
+          isAuthenticated: true,
+          isAuthModalOpen: false,
+          isApiKeyModalOpen: true, // Prompt new user to set their Gemini API key!
+        });
+
+        get().addToast('Регистрация успешна! Добро пожаловать!', 'success');
+        await get().loadServerTasks();
+        return true;
+      } catch (err: any) {
+        get().addToast(err?.message || 'Ошибка регистрации', 'error');
+        return false;
+      }
+    },
+
+    logoutUser: async () => {
+      try {
+        await fetch('/api/auth/logout', { method: 'POST' });
+        set({
+          currentUser: null,
+          isAuthenticated: false,
+          tasks: INITIAL_TASKS,
+        });
+        saveStoredTasks(INITIAL_TASKS);
+        get().addToast('Вы вышли из учетной записи', 'info');
+      } catch (e) {
+        console.error('Logout error:', e);
+      }
+    },
+
+    saveUserApiKey: async (apiKey, model = 'gemini-2.5-flash') => {
+      const trimmed = apiKey.trim();
+      try {
+        const res = await fetch('/api/auth/key', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ apiKey: trimmed, model, validate: true }),
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          get().addToast(data.error || 'Ошибка проверки ключа', 'error');
+          return false;
+        }
+
+        set((state) => ({
+          currentUser: state.currentUser ? {
+            ...state.currentUser,
+            hasApiKey: !!trimmed,
+            apiKey: trimmed,
+            geminiModel: model,
+          } : null,
+          settings: {
+            ...state.settings,
+            apiKey: trimmed,
+            model,
+          },
+          isApiKeyModalOpen: false,
+        }));
+
+        saveStoredSettings({
+          ...get().settings,
+          apiKey: trimmed,
+          model,
+        });
+
+        get().addToast(data.message || 'API-ключ успешно сохранен в базе Neon!', 'success');
+        return true;
+      } catch (e: any) {
+        get().addToast(e?.message || 'Ошибка сохранения ключа', 'error');
+        return false;
+      }
+    },
+
+    loadServerTasks: async () => {
+      try {
+        const res = await fetch('/api/tasks');
+        const data = await res.json();
+        if (data.authenticated && Array.isArray(data.tasks)) {
+          set({ tasks: data.tasks });
+          saveStoredTasks(data.tasks);
+        }
+      } catch (e) {
+        console.warn('Failed to load server tasks:', e);
+      }
+    },
+
     addTask: async (taskData, autoAnalyze = false) => {
+      const { isAuthenticated, currentUser, settings } = get();
+      const apiKeyToUse = currentUser?.apiKey || settings.apiKey;
+
+      if (isAuthenticated) {
+        try {
+          const res = await fetch('/api/tasks', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(apiKeyToUse ? { 'x-gemini-api-key': apiKeyToUse } : {})
+            },
+            body: JSON.stringify({
+              ...taskData,
+              autoAnalyze,
+            }),
+          });
+          const created = await res.json();
+          if (res.ok && created.id) {
+            set((state) => {
+              const updated = [created, ...state.tasks];
+              saveStoredTasks(updated);
+              return { tasks: updated };
+            });
+            get().addToast('Задача успешно добавлена в базу данных Neon', 'success');
+            return;
+          }
+        } catch (e) {
+          console.warn('Server task add failed, fallback to local:', e);
+        }
+      }
+
+      // Local / Offline fallback
       const newTask: Task = {
         id: crypto.randomUUID(),
         title: taskData.title?.trim() || 'Новая задача',
@@ -168,49 +403,6 @@ export const useTaskStore = create<TaskState>((set, get) => {
         aiReasoning: taskData.aiReasoning,
       };
 
-      if (autoAnalyze && newTask.title) {
-        set({ isAiLoading: true, aiActionType: 'quick-add' });
-        try {
-          const { settings } = get();
-          const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-          if (settings.apiKey) headers['x-gemini-api-key'] = settings.apiKey;
-
-          const res = await fetch('/api/ai/quick-add', {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({
-              text: newTask.title,
-              model: settings.model,
-              useFallbackIfNoKey: true,
-            }),
-          });
-
-          const data = await res.json();
-          if (data.success && data.data) {
-            const ai = data.data;
-            newTask.title = ai.title || newTask.title;
-            if (ai.description) newTask.description = ai.description;
-            if (ai.dueDate) newTask.dueDate = ai.dueDate;
-            if (ai.priority) newTask.priority = ai.priority;
-            if (ai.quadrant) newTask.quadrant = ai.quadrant;
-            if (ai.estimatedMinutes) newTask.estimatedMinutes = ai.estimatedMinutes;
-            if (ai.tags && ai.tags.length > 0) newTask.tags = ai.tags;
-            if (ai.aiScore) newTask.aiScore = ai.aiScore;
-            if (ai.aiReasoning) newTask.aiReasoning = ai.aiReasoning;
-
-            if (data.warning) {
-              get().addToast(data.warning, 'warning');
-            } else {
-              get().addToast('Задача проанализирована и добавлена через AI!', 'success');
-            }
-          }
-        } catch (e: any) {
-          console.warn('AutoAnalyze failed during addTask:', e);
-        } finally {
-          set({ isAiLoading: false, aiActionType: null });
-        }
-      }
-
       set((state) => {
         const updated = [newTask, ...state.tasks];
         saveStoredTasks(updated);
@@ -219,6 +411,8 @@ export const useTaskStore = create<TaskState>((set, get) => {
     },
 
     updateTask: (id, updates) => {
+      const { isAuthenticated } = get();
+
       set((state) => {
         const updated = state.tasks.map((task) =>
           task.id === id ? { ...task, ...updates } : task
@@ -226,84 +420,78 @@ export const useTaskStore = create<TaskState>((set, get) => {
         saveStoredTasks(updated);
         return { tasks: updated };
       });
+
+      if (isAuthenticated) {
+        fetch(`/api/tasks/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updates),
+        }).catch((e) => console.warn('PATCH sync error:', e));
+      }
     },
 
     deleteTask: (id) => {
+      const { isAuthenticated } = get();
+
       set((state) => {
         const updated = state.tasks.filter((task) => task.id !== id);
         saveStoredTasks(updated);
         return { tasks: updated };
       });
       get().addToast('Задача удалена', 'info');
+
+      if (isAuthenticated) {
+        fetch(`/api/tasks/${id}`, {
+          method: 'DELETE',
+        }).catch((e) => console.warn('DELETE sync error:', e));
+      }
     },
 
     toggleTaskComplete: (id) => {
-      set((state) => {
-        const updated = state.tasks.map((task) =>
-          task.id === id ? { ...task, isCompleted: !task.isCompleted } : task
-        );
-        saveStoredTasks(updated);
-        return { tasks: updated };
-      });
+      const task = get().tasks.find((t) => t.id === id);
+      if (!task) return;
+      const nextCompleted = !task.isCompleted;
+      get().updateTask(id, { isCompleted: nextCompleted });
     },
 
     toggleSubtask: (taskId, subtaskId) => {
-      set((state) => {
-        const updated = state.tasks.map((task) => {
-          if (task.id !== taskId) return task;
-          const subtasks = task.subtasks.map((st) =>
-            st.id === subtaskId ? { ...st, isCompleted: !st.isCompleted } : st
-          );
-          return { ...task, subtasks };
-        });
-        saveStoredTasks(updated);
-        return { tasks: updated };
-      });
+      const task = get().tasks.find((t) => t.id === taskId);
+      if (!task) return;
+
+      const updatedSubtasks = task.subtasks.map((st) =>
+        st.id === subtaskId ? { ...st, isCompleted: !st.isCompleted } : st
+      );
+      get().updateTask(taskId, { subtasks: updatedSubtasks });
     },
 
     addSubtask: (taskId, title) => {
       if (!title.trim()) return;
+      const task = get().tasks.find((t) => t.id === taskId);
+      if (!task) return;
+
       const newSubtask: Subtask = {
         id: crypto.randomUUID(),
         title: title.trim(),
         isCompleted: false,
       };
-      set((state) => {
-        const updated = state.tasks.map((task) =>
-          task.id === taskId
-            ? { ...task, subtasks: [...task.subtasks, newSubtask] }
-            : task
-        );
-        saveStoredTasks(updated);
-        return { tasks: updated };
-      });
+      get().updateTask(taskId, { subtasks: [...task.subtasks, newSubtask] });
     },
 
     deleteSubtask: (taskId, subtaskId) => {
-      set((state) => {
-        const updated = state.tasks.map((task) =>
-          task.id === taskId
-            ? { ...task, subtasks: task.subtasks.filter((st) => st.id !== subtaskId) }
-            : task
-        );
-        saveStoredTasks(updated);
-        return { tasks: updated };
+      const task = get().tasks.find((t) => t.id === taskId);
+      if (!task) return;
+
+      get().updateTask(taskId, {
+        subtasks: task.subtasks.filter((st) => st.id !== subtaskId),
       });
     },
 
     setSubtasks: (taskId, subtasks) => {
-      set((state) => {
-        const updated = state.tasks.map((task) =>
-          task.id === taskId ? { ...task, subtasks } : task
-        );
-        saveStoredTasks(updated);
-        return { tasks: updated };
-      });
+      get().updateTask(taskId, { subtasks });
     },
 
-    // AI Feature 1: Mass Prioritization
     prioritizeAllWithAI: async () => {
-      const { tasks, isAiLoading, cooldownRemaining, settings } = get();
+      const { tasks, isAiLoading, cooldownRemaining, settings, currentUser } = get();
       if (isAiLoading) return;
 
       if (cooldownRemaining > 0) {
@@ -317,18 +505,26 @@ export const useTaskStore = create<TaskState>((set, get) => {
         return;
       }
 
+      const apiKeyToUse = currentUser?.apiKey || settings.apiKey;
+      const modelToUse = currentUser?.geminiModel || settings.model;
+
+      if (!apiKeyToUse && (!currentUser || !currentUser.hasApiKey)) {
+        set({ isApiKeyModalOpen: true });
+        get().addToast('Пожалуйста, укажите ваш Google API Key для AI-приоритезации', 'warning');
+      }
+
       set({ isAiLoading: true, aiActionType: 'prioritizing' });
 
       try {
         const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-        if (settings.apiKey) headers['x-gemini-api-key'] = settings.apiKey;
+        if (apiKeyToUse) headers['x-gemini-api-key'] = apiKeyToUse;
 
         const res = await fetch('/api/ai/prioritize', {
           method: 'POST',
           headers,
           body: JSON.stringify({
             tasks: activeTasks,
-            model: settings.model,
+            model: modelToUse,
             useFallbackIfNoKey: true,
           }),
         });
@@ -347,7 +543,6 @@ export const useTaskStore = create<TaskState>((set, get) => {
           aiReasoning: string;
         }> = data.data;
 
-        // Apply metadata to existing tasks
         const itemMap = new Map(prioritizedItems.map((item) => [item.id, item]));
 
         set((state) => {
@@ -366,7 +561,6 @@ export const useTaskStore = create<TaskState>((set, get) => {
             return t;
           });
 
-          // Sort active tasks by aiScore descending
           updated.sort((a, b) => {
             if (a.isCompleted !== b.isCompleted) return a.isCompleted ? 1 : -1;
             return (b.aiScore || 0) - (a.aiScore || 0);
@@ -377,7 +571,7 @@ export const useTaskStore = create<TaskState>((set, get) => {
             tasks: updated,
             sortMode: 'aiScore',
             lastPrioritizedTime: Date.now(),
-            cooldownRemaining: 30, // 30-second rate-limit cooldown
+            cooldownRemaining: 30,
           };
         });
 
@@ -394,11 +588,13 @@ export const useTaskStore = create<TaskState>((set, get) => {
       }
     },
 
-    // AI Feature 2: Task Decomposition
     decomposeTaskWithAI: async (taskId) => {
-      const { tasks, settings } = get();
+      const { tasks, settings, currentUser } = get();
       const task = tasks.find((t) => t.id === taskId);
       if (!task) return;
+
+      const apiKeyToUse = currentUser?.apiKey || settings.apiKey;
+      const modelToUse = currentUser?.geminiModel || settings.model;
 
       set({
         isAiLoading: true,
@@ -408,7 +604,7 @@ export const useTaskStore = create<TaskState>((set, get) => {
 
       try {
         const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-        if (settings.apiKey) headers['x-gemini-api-key'] = settings.apiKey;
+        if (apiKeyToUse) headers['x-gemini-api-key'] = apiKeyToUse;
 
         const res = await fetch('/api/ai/decompose', {
           method: 'POST',
@@ -416,7 +612,7 @@ export const useTaskStore = create<TaskState>((set, get) => {
           body: JSON.stringify({
             title: task.title,
             description: task.description,
-            model: settings.model,
+            model: modelToUse,
             useFallbackIfNoKey: true,
           }),
         });
@@ -432,14 +628,8 @@ export const useTaskStore = create<TaskState>((set, get) => {
           isCompleted: false,
         }));
 
-        set((state) => {
-          const updated = state.tasks.map((t) =>
-            t.id === taskId
-              ? { ...t, subtasks: [...t.subtasks, ...generatedSubtasks] }
-              : t
-          );
-          saveStoredTasks(updated);
-          return { tasks: updated };
+        get().updateTask(taskId, {
+          subtasks: [...task.subtasks, ...generatedSubtasks],
         });
 
         if (data.warning) {
@@ -459,22 +649,24 @@ export const useTaskStore = create<TaskState>((set, get) => {
       }
     },
 
-    // AI Feature 3: Smart NLP Input Creation
     createTaskWithSmartInput: async (rawText) => {
       if (!rawText.trim()) return;
 
+      const { settings, currentUser } = get();
+      const apiKeyToUse = currentUser?.apiKey || settings.apiKey;
+      const modelToUse = currentUser?.geminiModel || settings.model;
+
       set({ isAiLoading: true, aiActionType: 'quick-add' });
       try {
-        const { settings } = get();
         const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-        if (settings.apiKey) headers['x-gemini-api-key'] = settings.apiKey;
+        if (apiKeyToUse) headers['x-gemini-api-key'] = apiKeyToUse;
 
         const res = await fetch('/api/ai/quick-add', {
           method: 'POST',
           headers,
           body: JSON.stringify({
             text: rawText,
-            model: settings.model,
+            model: modelToUse,
             useFallbackIfNoKey: true,
           }),
         });
@@ -482,37 +674,29 @@ export const useTaskStore = create<TaskState>((set, get) => {
         const data = await res.json();
         const parsed = data.data;
 
-        const newTask: Task = {
-          id: crypto.randomUUID(),
-          title: parsed?.title || rawText.trim(),
-          description: parsed?.description || '',
-          createdAt: new Date().toISOString(),
-          dueDate: parsed?.dueDate || undefined,
-          isCompleted: false,
-          priority: parsed?.priority || 'MEDIUM',
-          quadrant: parsed?.quadrant || 'SCHEDULE',
-          estimatedMinutes: parsed?.estimatedMinutes || 30,
-          tags: parsed?.tags || [],
-          subtasks: [],
-          aiScore: parsed?.aiScore || 60,
-          aiReasoning: parsed?.aiReasoning || 'Автоматически проанализировано при создании.',
-        };
-
-        set((state) => {
-          const updated = [newTask, ...state.tasks];
-          saveStoredTasks(updated);
-          return { tasks: updated };
-        });
+        await get().addTask(
+          {
+            title: parsed?.title || rawText.trim(),
+            description: parsed?.description || '',
+            dueDate: parsed?.dueDate || undefined,
+            priority: parsed?.priority || 'MEDIUM',
+            quadrant: parsed?.quadrant || 'SCHEDULE',
+            estimatedMinutes: parsed?.estimatedMinutes || 30,
+            tags: parsed?.tags || [],
+            aiScore: parsed?.aiScore || 60,
+            aiReasoning: parsed?.aiReasoning || 'Автоматически проанализировано при создании.',
+          },
+          false
+        );
 
         if (data.warning) {
           get().addToast(data.warning, 'warning');
         } else {
-          get().addToast(`Задача "${newTask.title}" добавлена и проанализирована!`, 'success');
+          get().addToast(`Задача "${parsed?.title || rawText}" добавлена и проанализирована!`, 'success');
         }
       } catch (err: any) {
         console.error('Smart input failed:', err);
-        // Fallback to normal add
-        get().addTask({ title: rawText }, false);
+        await get().addTask({ title: rawText }, false);
       } finally {
         set({ isAiLoading: false, aiActionType: null });
       }
@@ -525,12 +709,19 @@ export const useTaskStore = create<TaskState>((set, get) => {
     },
 
     clearCompleted: () => {
-      set((state) => {
-        const updated = state.tasks.filter((t) => !t.isCompleted);
-        saveStoredTasks(updated);
-        return { tasks: updated };
-      });
+      const { tasks, isAuthenticated } = get();
+      const completed = tasks.filter((t) => t.isCompleted);
+      const remaining = tasks.filter((t) => !t.isCompleted);
+
+      set({ tasks: remaining });
+      saveStoredTasks(remaining);
       get().addToast('Завершенные задачи очищены', 'info');
+
+      if (isAuthenticated) {
+        completed.forEach((t) => {
+          fetch(`/api/tasks/${t.id}`, { method: 'DELETE' }).catch(() => {});
+        });
+      }
     },
 
     updateSettings: (newSettings) => {

@@ -9,6 +9,8 @@ import { TaskList } from '@/components/TaskList';
 import { EisenhowerMatrix } from '@/components/EisenhowerMatrix';
 import { TaskEditModal } from '@/components/TaskEditModal';
 import { SettingsModal } from '@/components/SettingsModal';
+import { AuthModal } from '@/components/AuthModal';
+import { ApiKeyModal } from '@/components/ApiKeyModal';
 import { ToastContainer } from '@/components/Toast';
 
 export default function HomePage() {
@@ -40,6 +42,8 @@ export default function HomePage() {
       {/* Modals & Floating Toasts */}
       <TaskEditModal />
       <SettingsModal />
+      <AuthModal />
+      <ApiKeyModal />
       <ToastContainer />
     </div>
   );

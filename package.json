@@ -10,8 +10,11 @@
   },
   "dependencies": {
     "@google/genai": "^2.30.0",
+    "@neondatabase/serverless": "^1.2.0",
+    "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",
     "framer-motion": "^12.4.7",
+    "jose": "^6.2.13",
     "lucide-react": "^0.475.0",
     "next": "^15.1.7",
     "react": "^19.0.0",
@@ -20,6 +23,7 @@
     "zustand": "^5.0.3"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
     "@types/node": "^22.13.4",
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",

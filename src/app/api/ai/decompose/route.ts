@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { decomposeTaskWithAI } from '@/lib/gemini';
+import { getCurrentUser } from '@/lib/auth';
 
 export async function POST(req: NextRequest) {
   try {
-    const customApiKey = req.headers.get('x-gemini-api-key') || undefined;
+    const user = await getCurrentUser(req);
     const body = await req.json();
     const { title, description, model, useFallbackIfNoKey } = body as {
       title: string;
@@ -16,8 +17,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Название задачи не указано' }, { status: 400 });
     }
 
+    const effectiveApiKey =
+      req.headers.get('x-gemini-api-key') ||
+      user?.gemini_api_key ||
+      process.env.GEMINI_API_KEY ||
+      undefined;
+
+    const effectiveModel = model || user?.gemini_model || 'gemini-2.5-flash';
+
     try {
-      const result = await decomposeTaskWithAI(title.trim(), description, customApiKey, model);
+      const result = await decomposeTaskWithAI(title.trim(), description, effectiveApiKey, effectiveModel);
       return NextResponse.json({
         success: true,
         data: result,
@@ -27,7 +36,6 @@ export async function POST(req: NextRequest) {
       console.warn('AI Decompose Error:', aiError?.message);
 
       if (useFallbackIfNoKey || aiError?.message === 'API_KEY_MISSING') {
-        // Fallback default decomposition steps
         return NextResponse.json({
           success: true,
           data: {
@@ -39,7 +47,9 @@ export async function POST(req: NextRequest) {
             ]
           },
           source: 'heuristic',
-          warning: 'API-ключ не настроен. Сгенерированы базовые шаги декомпозиции.'
+          warning: aiError?.message === 'API_KEY_MISSING'
+            ? 'API-ключ не настроен в профиле. Сгенерированы базовые шаги.'
+            : 'Сгенерированы базовые шаги декомпозиции.'
         });
       }
 
