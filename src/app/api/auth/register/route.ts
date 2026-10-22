@@ -40,9 +40,9 @@ export async function POST(req: NextRequest) {
     for (const t of INITIAL_TASKS) {
       await sql.query(
         `INSERT INTO tasks (
-          id, user_id, title, description, due_date, is_completed, priority, quadrant, 
-          estimated_minutes, tags, subtasks, ai_score, ai_reasoning, created_at, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW(), NOW())`,
+          id, user_id, title, description, due_date, is_completed, completed, priority, quadrant, 
+          eisenhower_quadrant, estimated_minutes, tags, subtasks, ai_score, priority_score, ai_reasoning, created_at, updated_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, NOW(), NOW())`,
         [
           crypto.randomUUID(),
           userId,
@@ -50,11 +50,14 @@ export async function POST(req: NextRequest) {
           t.description || null,
           t.dueDate || null,
           t.isCompleted,
+          t.isCompleted,
           t.priority,
+          t.quadrant || 'SCHEDULE',
           t.quadrant || 'SCHEDULE',
           t.estimatedMinutes || 30,
           JSON.stringify(t.tags || []),
           JSON.stringify(t.subtasks || []),
+          t.aiScore || 50,
           t.aiScore || 50,
           t.aiReasoning || null,
         ]

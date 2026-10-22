@@ -106,9 +106,9 @@ export async function POST(req: NextRequest) {
 
     await sql.query(
       `INSERT INTO tasks (
-        id, user_id, title, description, due_date, is_completed, priority, quadrant,
-        estimated_minutes, tags, subtasks, ai_score, ai_reasoning, created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW(), NOW())`,
+        id, user_id, title, description, due_date, is_completed, completed, priority, quadrant,
+        eisenhower_quadrant, estimated_minutes, tags, subtasks, ai_score, priority_score, ai_reasoning, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, NOW(), NOW())`,
       [
         taskId,
         user.id,
@@ -116,11 +116,14 @@ export async function POST(req: NextRequest) {
         finalTaskData.description,
         finalTaskData.dueDate,
         false,
+        false,
         finalTaskData.priority,
+        finalTaskData.quadrant,
         finalTaskData.quadrant,
         finalTaskData.estimatedMinutes,
         JSON.stringify(finalTaskData.tags),
         JSON.stringify([]),
+        finalTaskData.aiScore,
         finalTaskData.aiScore,
         finalTaskData.aiReasoning,
       ]

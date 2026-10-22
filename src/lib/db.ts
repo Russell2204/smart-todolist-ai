@@ -1,6 +1,5 @@
-import { neon, neonConfig } from '@neondatabase/serverless';
+import { neon } from '@neondatabase/serverless';
 
-// Configure neon if needed
 const databaseUrl = process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_QcBjGEO7il5p@ep-muddy-bar-ba35o4yx.c-8.eu-central-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require';
 
 export const sql = neon(databaseUrl);
@@ -8,7 +7,7 @@ export const sql = neon(databaseUrl);
 let tablesInitialized = false;
 
 /**
- * Ensure database schema exists on Neon
+ * Ensure database schema exists on Neon and has all needed columns
  */
 export async function ensureDatabaseSchema() {
   if (tablesInitialized) return;
@@ -26,6 +25,11 @@ export async function ensureDatabaseSchema() {
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
       );
     `);
+
+    // Ensure columns exist if table was created previously
+    await sql.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS gemini_api_key TEXT');
+    await sql.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS gemini_model VARCHAR(64) DEFAULT 'gemini-2.5-flash'");
+    await sql.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()');
 
     await sql.query(`
       CREATE TABLE IF NOT EXISTS tasks (
@@ -47,8 +51,16 @@ export async function ensureDatabaseSchema() {
       );
     `);
 
-    await sql.query(`CREATE INDEX IF NOT EXISTS idx_tasks_user_id ON tasks(user_id);`);
-    await sql.query(`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);`);
+    // Ensure columns exist on tasks
+    await sql.query('ALTER TABLE tasks ADD COLUMN IF NOT EXISTS is_completed BOOLEAN DEFAULT FALSE');
+    await sql.query("ALTER TABLE tasks ADD COLUMN IF NOT EXISTS quadrant VARCHAR(32) DEFAULT 'SCHEDULE'");
+    await sql.query('ALTER TABLE tasks ADD COLUMN IF NOT EXISTS estimated_minutes INTEGER DEFAULT 30');
+    await sql.query("ALTER TABLE tasks ADD COLUMN IF NOT EXISTS tags JSONB DEFAULT '[]'::jsonb");
+    await sql.query('ALTER TABLE tasks ADD COLUMN IF NOT EXISTS ai_score INTEGER DEFAULT 50');
+    await sql.query('ALTER TABLE tasks ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()');
+
+    await sql.query('CREATE INDEX IF NOT EXISTS idx_tasks_user_id ON tasks(user_id)');
+    await sql.query('CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)');
 
     tablesInitialized = true;
   } catch (error) {
