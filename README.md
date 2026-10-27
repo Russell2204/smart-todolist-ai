@@ -2,7 +2,8 @@
 
 Интеллектуальное веб-приложение для управления задачами с автоматическим анализом, матрицей Эйзенхауэра и расстановкой приоритетов на базе **Google Gemini API** (`@google/genai`).
 
-🌐 **Production URL (Vercel):** [https://smart-ai-todolist.vercel.app](https://smart-ai-todolist.vercel.app)  
+🌐 **Production URL (Vercel):** [https://smart-todolist-ai.vercel.app](https://smart-todolist-ai.vercel.app)  
+📦 **GitHub Repository:** [https://github.com/Russell2204/smart-todolist-ai](https://github.com/Russell2204/smart-todolist-ai)  
 🐘 **Database (Neon PostgreSQL):** `smart-ai-todolist` на базе Neon Serverless Driver  
 🚀 **Хостинг:** Vercel (Next.js 15 App Router)
 
