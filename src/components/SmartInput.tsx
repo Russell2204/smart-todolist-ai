@@ -8,10 +8,8 @@ import {
   ChevronDown, 
   ChevronUp, 
   Calendar, 
-  Clock, 
   Cpu, 
-  Loader2,
-  Tag as TagIcon
+  Loader2 
 } from 'lucide-react';
 import { playMechanicalClick, triggerHaptic } from '@/lib/audio';
 
@@ -86,17 +84,17 @@ export function SmartInput() {
   };
 
   return (
-    <div className="bg-surface rounded-[8px] border border-border-subtle p-3 sm:p-4 shadow-plate transition-all">
-      <form onSubmit={handleSubmit} className="flex flex-col gap-2.5">
+    <div className="bg-surface rounded-[8px] border border-border-subtle p-3.5 sm:p-5 shadow-[0_4px_20px_rgba(0,0,0,0.45)] transition-all">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3">
         
         {/* Main Input Row */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
           
-          {/* Hardware Slot Input */}
-          <div className="relative flex-1 flex items-center bg-slot border border-border-subtle focus-within:border-accent-amber rounded-[6px] shadow-sunken px-3 py-2 transition-colors">
+          {/* Hardware Slot Input with Deep Relief and Ambient Glow */}
+          <div className="relative flex-1 flex items-center bg-slot border border-border-subtle focus-within:border-accent-amber focus-within:shadow-[0_0_20px_rgba(245,158,11,0.18),inset_0_2px_4px_rgba(0,0,0,0.8)] rounded-[6px] shadow-[inset_0_3px_8px_rgba(0,0,0,0.7)] px-3.5 py-2.5 min-h-[48px] sm:min-h-[52px] transition-all">
             {/* LED Status indicator inside slot */}
             <span 
-              className={`w-2 h-2 rounded-[2px] mr-2.5 shrink-0 transition-all ${
+              className={`w-2.5 h-2.5 rounded-[2px] mr-3 shrink-0 transition-all ${
                 useAi ? 'bg-accent-amber shadow-glow-amber' : 'bg-border-focus'
               }`}
               title={useAi ? 'Режим AI анализа активен' : 'Стандартный ввод'} 
@@ -109,14 +107,14 @@ export function SmartInput() {
               onKeyDown={handleKeyDown}
               disabled={isSubmitting}
               placeholder="+ Введите задачу или цель... [Enter]"
-              className="w-full bg-transparent text-text-primary placeholder:text-text-muted focus:outline-none text-base sm:text-sm font-sans"
+              className="w-full bg-transparent text-white placeholder:text-[#8E97A6] focus:outline-none text-base sm:text-[15px] font-sans font-medium"
             />
 
             {inputVal && (
               <button
                 type="button"
                 onClick={() => setInputVal('')}
-                className="text-xs text-text-muted hover:text-text-primary px-1.5 py-0.5 rounded-[2px]"
+                className="text-xs text-text-muted hover:text-white px-2 py-1 rounded-[2px]"
                 aria-label="Очистить ввод"
               >
                 ✕
@@ -125,7 +123,7 @@ export function SmartInput() {
           </div>
 
           {/* Action Buttons Row */}
-          <div className="flex items-center gap-1.5 shrink-0">
+          <div className="flex items-center gap-2 shrink-0">
             
             {/* AI Toggle Rocker */}
             <button
@@ -134,14 +132,14 @@ export function SmartInput() {
                 if (settings.soundEnabled) playMechanicalClick(200, 0.02);
                 setUseAi(!useAi);
               }}
-              className={`flex items-center gap-1.5 px-2.5 py-2 rounded-[6px] font-mono text-xs border transition-all ${
+              className={`flex items-center gap-1.5 px-3 py-2.5 rounded-[6px] font-mono text-xs border transition-all min-h-[44px] ${
                 useAi
-                  ? 'bg-slot border-border-amberDim text-accent-amber shadow-glow-amber'
+                  ? 'bg-slot border-accent-amber/50 text-accent-amber shadow-glow-amber font-bold'
                   : 'bg-slot border-border-subtle text-text-muted hover:text-text-secondary'
               }`}
               title="Автоматический разбор даты, времени и приоритета через Google Gemini 2.5 Flash"
             >
-              <Cpu className="w-3.5 h-3.5 stroke-[1.5]" />
+              <Cpu className="w-4 h-4 stroke-[1.5]" />
               <span className="font-display tracking-wider uppercase text-[11px]">
                 {useAi ? 'AI: ВКЛ' : 'AI: ВЫКЛ'}
               </span>
@@ -154,8 +152,8 @@ export function SmartInput() {
                 if (settings.soundEnabled) playMechanicalClick(180, 0.02);
                 setIsExpanded(!isExpanded);
               }}
-              className={`p-2 rounded-[6px] border border-border-subtle text-text-secondary hover:text-text-primary hover:bg-border-subtle/30 transition-all ${
-                isExpanded ? 'bg-border-subtle/40 text-text-primary' : 'bg-slot'
+              className={`p-2.5 rounded-[6px] border border-border-subtle text-text-secondary hover:text-white hover:bg-border-subtle/30 transition-all min-h-[44px] min-w-[44px] flex items-center justify-center ${
+                isExpanded ? 'bg-border-subtle/60 text-white border-border-focus' : 'bg-slot'
               }`}
               title={isExpanded ? 'Свернуть параметры' : 'Настроить параметры вручную'}
               aria-label="Ручные параметры задачи"
@@ -167,17 +165,17 @@ export function SmartInput() {
             <button
               type="submit"
               disabled={!inputVal.trim() || isSubmitting}
-              className={`flex items-center justify-center gap-1.5 px-4 py-2 rounded-[6px] font-display font-semibold text-xs tracking-wider uppercase transition-all min-h-[40px] ${
+              className={`flex items-center justify-center gap-2 px-5 py-2.5 rounded-[6px] font-display font-bold text-xs tracking-wider uppercase transition-all min-h-[44px] ${
                 !inputVal.trim() || isSubmitting
                   ? 'bg-slot border border-border-subtle text-text-muted cursor-not-allowed'
-                  : 'bg-accent-amber hover:bg-accent-amber-hover active:translate-y-[2px] active:shadow-none text-slot shadow-tactile-dark'
+                  : 'bg-gradient-to-b from-[#F59E0B] to-[#D97706] hover:from-[#FBBF24] hover:to-[#F59E0B] text-slot shadow-[0_2px_0_#92400E,0_4px_12px_rgba(245,158,11,0.25)] active:translate-y-[2px] active:shadow-none'
               }`}
             >
               {isSubmitting ? (
                 <Loader2 className="w-4 h-4 animate-spin text-slot" />
               ) : (
                 <>
-                  <Plus className="w-4 h-4 stroke-[2]" />
+                  <Plus className="w-4 h-4 stroke-[2.5]" />
                   <span>ДОБАВИТЬ</span>
                 </>
               )}

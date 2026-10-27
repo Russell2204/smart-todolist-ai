@@ -74,21 +74,36 @@ export function TaskCard({ task, compact = false }: TaskCardProps) {
   };
 
   const priorityColors: Record<string, { pip: string; border: string; text: string }> = {
-    CRITICAL: { pip: 'bg-status-danger', border: 'border-status-danger/40', text: 'text-status-danger' },
-    HIGH: { pip: 'bg-accent-amber', border: 'border-accent-amber/40', text: 'text-accent-amber' },
-    MEDIUM: { pip: 'bg-status-info', border: 'border-status-info/40', text: 'text-status-info' },
+    CRITICAL: { pip: 'bg-status-danger', border: 'border-status-danger/50', text: 'text-status-danger' },
+    HIGH: { pip: 'bg-accent-amber', border: 'border-accent-amber/50', text: 'text-accent-amber' },
+    MEDIUM: { pip: 'bg-status-info', border: 'border-status-info/50', text: 'text-status-info' },
     LOW: { pip: 'bg-text-muted', border: 'border-border-subtle', text: 'text-text-muted' },
   };
   const pColor = priorityColors[task.priority] || priorityColors.MEDIUM;
 
   return (
     <article
-      className={`relative group rounded-[6px] border transition-all duration-150 ${
+      className={`relative group rounded-[8px] border transition-all duration-150 ${
         task.isCompleted
           ? 'bg-slot/60 border-border-subtle/50 opacity-60'
-          : 'bg-surface border-border-subtle hover:border-border-focus hover:border-t-[#404552] shadow-plate'
-      } ${compact ? 'p-2.5 sm:p-3' : 'p-3 sm:p-3.5'} overflow-hidden`}
+          : 'bg-surface border-border-subtle hover:border-border-focus hover:border-t-[#4A5060] shadow-[0_4px_16px_rgba(0,0,0,0.45)] hover:shadow-[0_6px_24px_rgba(0,0,0,0.6)]'
+      } ${compact ? 'pl-3.5 pr-2.5 py-2.5 sm:py-3' : 'pl-4 pr-3.5 sm:pr-4 py-3 sm:py-3.5'} overflow-hidden`}
     >
+      {/* Signal Edge Indicator (3px vertical line on the left) */}
+      <div 
+        className={`absolute left-0 top-0 bottom-0 w-[3px] transition-colors ${
+          task.isCompleted 
+            ? 'bg-status-success/50' 
+            : task.priority === 'CRITICAL' 
+            ? 'bg-status-danger shadow-[0_0_8px_rgba(239,68,68,0.7)]' 
+            : task.priority === 'HIGH' 
+            ? 'bg-accent-amber shadow-[0_0_8px_rgba(245,158,11,0.6)]' 
+            : task.priority === 'MEDIUM' 
+            ? 'bg-status-info shadow-[0_0_8px_rgba(59,130,246,0.6)]' 
+            : 'bg-border-subtle'
+        }`} 
+      />
+
       {/* Laser progress line during AI prioritization */}
       {isPrioritizing && !task.isCompleted && (
         <div className="absolute top-0 left-0 right-0 h-[2px] bg-accent-amber animate-laser z-20 shadow-glow-amber" />
@@ -102,26 +117,26 @@ export function TaskCard({ task, compact = false }: TaskCardProps) {
           <button
             type="button"
             onClick={handleToggleComplete}
-            className={`w-[18px] h-[18px] rounded-[3px] border flex items-center justify-center transition-all ${
+            className={`w-[19px] h-[19px] rounded-[3px] border flex items-center justify-center transition-all ${
               task.isCompleted
                 ? 'bg-status-success border-status-success text-slot shadow-glow-green'
                 : 'bg-slot border-border-focus hover:border-accent-amber text-transparent'
             }`}
             aria-label={task.isCompleted ? 'Отметить как незавершенную' : 'Отметить как выполненную'}
           >
-            <Check className="w-3 h-3 stroke-[3]" />
+            <Check className="w-3.5 h-3.5 stroke-[3]" />
           </button>
         </div>
 
         {/* Task Content */}
         <div className="flex-1 min-w-0">
           
-          {/* Metadata badges row */}
-          <div className="flex flex-wrap items-center gap-1.5 mb-1 text-[11px] font-mono select-none">
+          {/* Metadata badges row with deep background and high contrast text */}
+          <div className="flex flex-wrap items-center gap-1.5 mb-1.5 text-[11px] font-mono select-none">
             
             {/* Priority Indicator */}
             <span
-              className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-[2px] border ${pColor.border} bg-slot ${pColor.text} text-[10px] font-bold tracking-wider`}
+              className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-[2px] border ${pColor.border} bg-[#07080A] ${pColor.text} text-[10px] font-bold tracking-wider`}
             >
               <span className={`w-1.5 h-1.5 rounded-full ${pColor.pip}`} />
               {task.priority}
@@ -129,7 +144,7 @@ export function TaskCard({ task, compact = false }: TaskCardProps) {
 
             {/* Quadrant Badge */}
             {task.quadrant && (
-              <span className="inline-flex items-center px-1.5 py-0.5 rounded-[2px] border border-border-subtle bg-slot text-text-secondary text-[10px]">
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded-[2px] border border-[#262A33] bg-[#07080A] text-[#CBD2DE] text-[10px] font-medium">
                 {task.quadrant === 'DO_FIRST' ? 'Q1 // ФОКУС' :
                  task.quadrant === 'SCHEDULE' ? 'Q2 // ПЛАН' :
                  task.quadrant === 'DELEGATE' ? 'Q3 // ПОРУЧИТЬ' : 'Q4 // СБРОС'}
@@ -139,7 +154,7 @@ export function TaskCard({ task, compact = false }: TaskCardProps) {
             {/* AI Score Badge */}
             {typeof task.aiScore === 'number' && !task.isCompleted && (
               <span
-                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-[2px] border border-border-amberDim bg-slot text-accent-amber text-[10px]"
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-[2px] border border-accent-amber/30 bg-[#07080A] text-accent-amber text-[10px] font-semibold"
                 title={`Индекс приоритета Gemini: ${task.aiScore}/100`}
               >
                 SCORE: {task.aiScore}
@@ -148,7 +163,7 @@ export function TaskCard({ task, compact = false }: TaskCardProps) {
 
             {/* Estimated Time Badge */}
             {task.estimatedMinutes ? (
-              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-[2px] border border-border-subtle bg-slot text-text-muted text-[10px]">
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-[2px] border border-[#262A33] bg-[#07080A] text-[#A6ADB9] text-[10px]">
                 <Clock className="w-2.5 h-2.5 stroke-[1.5]" />
                 {formatEstimatedTime(task.estimatedMinutes)}
               </span>
@@ -159,10 +174,10 @@ export function TaskCard({ task, compact = false }: TaskCardProps) {
               <span
                 className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-[2px] border text-[10px] ${
                   dueDateInfo.isOverdue
-                    ? 'border-status-danger/40 bg-slot text-status-danger'
+                    ? 'border-status-danger/40 bg-[#07080A] text-status-danger font-semibold'
                     : dueDateInfo.isToday
-                    ? 'border-accent-amber/40 bg-slot text-accent-amber'
-                    : 'border-border-subtle bg-slot text-text-muted'
+                    ? 'border-accent-amber/40 bg-[#07080A] text-accent-amber font-semibold'
+                    : 'border-[#262A33] bg-[#07080A] text-[#A6ADB9]'
                 }`}
               >
                 <Calendar className="w-2.5 h-2.5 stroke-[1.5]" />
@@ -185,19 +200,19 @@ export function TaskCard({ task, compact = false }: TaskCardProps) {
 
                 {showAiReasoning && (
                   <div className="absolute left-0 bottom-full mb-1.5 z-30 w-64 p-2.5 rounded-[4px] bg-slot border border-border-focus text-text-secondary text-xs shadow-plate">
-                    <p className="font-mono text-[10px] text-accent-amber uppercase mb-1">
+                    <p className="font-mono text-[10px] text-accent-amber uppercase mb-1 font-bold">
                       ФАКТОРЫ GEMINI AI:
                     </p>
-                    <p className="leading-relaxed font-sans text-text-primary text-[11px]">{task.aiReasoning}</p>
+                    <p className="leading-relaxed font-sans text-white text-[11px]">{task.aiReasoning}</p>
                   </div>
                 )}
               </div>
             )}
           </div>
 
-          {/* Title */}
+          {/* Title with crisp high contrast */}
           <h3
-            className={`text-sm sm:text-[15px] font-sans font-medium text-text-primary leading-snug break-words ${
+            className={`text-[15px] sm:text-base font-sans font-medium text-white leading-snug break-words ${
               task.isCompleted ? 'line-through text-text-muted' : ''
             }`}
           >
@@ -207,7 +222,7 @@ export function TaskCard({ task, compact = false }: TaskCardProps) {
           {/* Description */}
           {task.description && (
             <p
-              className={`text-xs text-text-secondary mt-1 leading-relaxed break-words font-sans ${
+              className={`text-xs sm:text-[13px] text-[#A6ADB9] mt-1 leading-relaxed break-words font-sans ${
                 task.isCompleted ? 'line-through opacity-60' : ''
               }`}
             >
@@ -221,7 +236,7 @@ export function TaskCard({ task, compact = false }: TaskCardProps) {
               {task.tags.map((tag, idx) => (
                 <span
                   key={idx}
-                  className="inline-flex items-center px-1.5 py-0.5 rounded-[2px] font-mono text-[10px] text-text-muted bg-slot border border-border-subtle"
+                  className="inline-flex items-center px-1.5 py-0.5 rounded-[2px] font-mono text-[10px] text-text-secondary bg-[#07080A] border border-[#262A33]"
                 >
                   #{tag}
                 </span>
@@ -240,7 +255,7 @@ export function TaskCard({ task, compact = false }: TaskCardProps) {
                   if (settings.soundEnabled) playMechanicalClick(160, 0.015);
                   setIsSubtasksOpen(!isSubtasksOpen);
                 }}
-                className="flex items-center gap-1.5 font-mono text-[11px] text-text-secondary hover:text-text-primary transition-colors"
+                className="flex items-center gap-1.5 font-mono text-[11px] text-[#CBD2DE] hover:text-white transition-colors"
               >
                 {isSubtasksOpen ? (
                   <ChevronDown className="w-3 h-3 text-text-muted stroke-[1.5]" />
@@ -251,9 +266,9 @@ export function TaskCard({ task, compact = false }: TaskCardProps) {
                   ШАГИ {totalSubtasks > 0 && `[${completedSubtasks}/${totalSubtasks}]`}
                 </span>
                 {totalSubtasks > 0 && (
-                  <div className="w-10 h-1 rounded-[1px] bg-slot overflow-hidden ml-1 border border-border-subtle">
+                  <div className="w-12 h-1.5 rounded-[2px] bg-slot overflow-hidden ml-1 border border-border-subtle">
                     <div
-                      className="h-full bg-status-success transition-all duration-300"
+                      className="h-full bg-status-success shadow-glow-green transition-all duration-300"
                       style={{ width: `${subtaskPercentage}%` }}
                     />
                   </div>
@@ -269,17 +284,17 @@ export function TaskCard({ task, compact = false }: TaskCardProps) {
                     decomposeTaskWithAI(task.id);
                   }}
                   disabled={isDecomposing || isAiLoading}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[3px] font-display font-semibold text-[10px] tracking-wider uppercase border border-border-subtle bg-slot text-text-secondary hover:text-text-primary hover:border-border-focus transition-all disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[3px] font-display font-semibold text-[10px] tracking-wider uppercase border border-border-subtle bg-slot text-text-secondary hover:text-white hover:border-accent-amber transition-all disabled:opacity-50"
                   title="Gemini разобьет сложную задачу на 3-5 конкретных подзадач"
                 >
                   {isDecomposing ? (
                     <>
-                      <Loader2 className="w-2.5 h-2.5 animate-spin text-accent-amber" />
+                      <Loader2 className="w-3 h-3 animate-spin text-accent-amber" />
                       <span>РАСЧЕТ...</span>
                     </>
                   ) : (
                     <>
-                      <Cpu className="w-2.5 h-2.5 stroke-[1.5] text-accent-amber" />
+                      <Cpu className="w-3 h-3 stroke-[1.5] text-accent-amber" />
                       <span>{totalSubtasks === 0 ? 'ШАГИ С AI' : '+ AI ШАГИ'}</span>
                     </>
                   )}
@@ -310,7 +325,7 @@ export function TaskCard({ task, compact = false }: TaskCardProps) {
                         className={`truncate font-sans text-xs ${
                           st.isCompleted
                             ? 'line-through text-text-muted'
-                            : 'text-text-primary'
+                            : 'text-white'
                         }`}
                       >
                         {st.title}
@@ -337,12 +352,12 @@ export function TaskCard({ task, compact = false }: TaskCardProps) {
                     value={newSubtaskTitle}
                     onChange={(e) => setNewSubtaskTitle(e.target.value)}
                     placeholder="+ Добавить шаг вручную..."
-                    className="flex-1 px-2 py-1 rounded-[3px] bg-slot border border-border-subtle text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-amber font-sans"
+                    className="flex-1 px-2.5 py-1.5 rounded-[3px] bg-slot border border-border-subtle text-xs text-white placeholder:text-text-muted focus:outline-none focus:border-accent-amber font-sans"
                   />
                   <button
                     type="submit"
                     disabled={!newSubtaskTitle.trim()}
-                    className="p-1 rounded-[3px] bg-border-subtle hover:bg-border-focus text-text-primary disabled:opacity-40 transition-colors"
+                    className="px-2 py-1 rounded-[3px] bg-border-subtle hover:bg-border-focus text-white disabled:opacity-40 transition-colors"
                     aria-label="Сохранить шаг"
                   >
                     <Plus className="w-3.5 h-3.5 stroke-[2]" />
@@ -361,7 +376,7 @@ export function TaskCard({ task, compact = false }: TaskCardProps) {
               if (settings.soundEnabled) playMechanicalClick(180, 0.015);
               setEditingTask(task);
             }}
-            className="p-1.5 text-text-muted hover:text-text-primary hover:bg-slot rounded-[3px] transition-colors"
+            className="p-1.5 text-text-muted hover:text-white hover:bg-slot rounded-[3px] transition-colors"
             title="Редактировать задачу"
             aria-label="Редактировать"
           >

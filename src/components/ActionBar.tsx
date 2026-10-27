@@ -52,26 +52,26 @@ export function ActionBar() {
   };
 
   return (
-    <div className="flex flex-col gap-2.5 py-2">
+    <div className="flex flex-col gap-3 py-1">
       
-      {/* Top row: Tactile AI Sort Button & Search */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
+      {/* Level 1: Tactile AI Sort Button & Search Bar */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
         
-        {/* Tactile AI Sort Button */}
+        {/* Dominating Polished Amber AI Sort Button */}
         <button
           type="button"
           onClick={handlePrioritize}
           disabled={isAiLoading || cooldownRemaining > 0 || activeTasksCount === 0}
-          className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-[6px] font-display font-semibold text-xs tracking-wider uppercase transition-all shadow-tactile-dark min-h-[42px] ${
+          className={`flex items-center justify-center gap-2.5 px-5 py-2.5 rounded-[6px] font-display font-bold text-xs tracking-wider uppercase transition-all min-h-[46px] ${
             cooldownRemaining > 0 || activeTasksCount === 0 || isAiLoading
               ? 'bg-slot border border-border-subtle text-text-muted cursor-not-allowed shadow-none'
-              : 'bg-accent-amber hover:bg-accent-amber-hover text-slot active:translate-y-[2px] active:shadow-none'
+              : 'bg-gradient-to-b from-[#F59E0B] to-[#D97706] hover:from-[#FBBF24] hover:to-[#F59E0B] text-slot shadow-[0_2px_0_#92400E,0_4px_16px_rgba(245,158,11,0.25)] active:translate-y-[2px] active:shadow-none'
           }`}
           title="Автоматическая расстановка приоритетов и квадрантов Эйзенхауэра с помощью Google Gemini"
         >
           {isPrioritizing ? (
             <>
-              <Loader2 className="w-4 h-4 animate-spin text-text-muted" />
+              <Loader2 className="w-4 h-4 animate-spin text-slot" />
               <span>[ ВЫЧИСЛЕНИЕ ПРИОРИТЕТОВ... ]</span>
             </>
           ) : cooldownRemaining > 0 ? (
@@ -85,28 +85,28 @@ export function ActionBar() {
             <>
               <Cpu className="w-4 h-4 stroke-[2]" />
               <span>[ AI СОРТИРОВКА ]</span>
-              <span className="font-mono text-[10px] px-1.5 py-0.5 rounded-[2px] bg-slot/20 text-slot font-bold">
+              <span className="font-mono text-[11px] px-2 py-0.5 rounded-[3px] bg-slot/25 text-slot font-bold">
                 {activeTasksCount}
               </span>
             </>
           )}
         </button>
 
-        {/* Slotted Search Bar */}
-        <div className="relative flex-1 sm:max-w-md flex items-center bg-slot border border-border-subtle focus-within:border-accent-amber rounded-[6px] shadow-sunken px-3 py-2 transition-colors">
-          <Search className="w-3.5 h-3.5 text-text-muted mr-2 shrink-0 stroke-[1.5]" />
+        {/* Slotted Search Bar with Ambient Shadow */}
+        <div className="relative flex-1 sm:max-w-md flex items-center bg-slot border border-border-subtle focus-within:border-accent-amber focus-within:shadow-[0_0_15px_rgba(245,158,11,0.12)] rounded-[6px] shadow-[inset_0_2px_6px_rgba(0,0,0,0.6)] px-3.5 py-2.5 transition-all min-h-[46px]">
+          <Search className="w-4 h-4 text-[#8E97A6] mr-2.5 shrink-0 stroke-[1.5]" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Поиск по названию, деталям или тегам..."
-            className="w-full bg-transparent text-text-primary placeholder:text-text-muted focus:outline-none text-base sm:text-xs font-sans"
+            className="w-full bg-transparent text-white placeholder:text-[#8E97A6] focus:outline-none text-base sm:text-xs font-sans font-medium"
           />
           {searchQuery && (
             <button
               type="button"
               onClick={() => setSearchQuery('')}
-              className="text-xs text-text-muted hover:text-text-primary px-1"
+              className="text-xs text-text-muted hover:text-white px-1.5 py-0.5"
               aria-label="Очистить поиск"
             >
               ✕
@@ -115,21 +115,21 @@ export function ActionBar() {
         </div>
       </div>
 
-      {/* Second row: Horizontal scrolling filter chips & selectors */}
-      <div className="flex flex-wrap items-center justify-between gap-2 pt-0.5 text-xs">
+      {/* Level 2: Status Rail & Filtering Controls */}
+      <div className="flex flex-wrap items-center justify-between gap-2.5 pt-1 text-xs">
         
-        {/* Horizontal Status Chips */}
-        <div className="flex items-center gap-1 overflow-x-auto no-scrollbar p-0.5 rounded-[6px] bg-slot border border-border-subtle shadow-sunken">
+        {/* Horizontal Status Track Rail */}
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar p-1 rounded-[6px] bg-slot border border-border-subtle shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)]">
           <button
             type="button"
             onClick={() => {
               if (settings.soundEnabled) playMechanicalClick(180, 0.015);
               setFilterStatus('all');
             }}
-            className={`px-2.5 py-1 rounded-[4px] font-mono text-[11px] transition-all whitespace-nowrap ${
+            className={`px-3 py-1.5 rounded-[4px] font-mono text-[11px] transition-all whitespace-nowrap ${
               filterStatus === 'all'
-                ? 'bg-border-subtle text-text-primary font-semibold shadow-plate border border-border-focus'
-                : 'text-text-muted hover:text-text-secondary'
+                ? 'bg-border-focus text-white font-bold shadow-plate border border-accent-amber/50'
+                : 'text-text-secondary hover:text-white'
             }`}
           >
             ВСЕ [{tasks.length}]
@@ -140,10 +140,10 @@ export function ActionBar() {
               if (settings.soundEnabled) playMechanicalClick(180, 0.015);
               setFilterStatus('active');
             }}
-            className={`px-2.5 py-1 rounded-[4px] font-mono text-[11px] transition-all whitespace-nowrap ${
+            className={`px-3 py-1.5 rounded-[4px] font-mono text-[11px] transition-all whitespace-nowrap ${
               filterStatus === 'active'
-                ? 'bg-border-subtle text-text-primary font-semibold shadow-plate border border-border-focus'
-                : 'text-text-muted hover:text-text-secondary'
+                ? 'bg-border-focus text-white font-bold shadow-plate border border-accent-amber/50'
+                : 'text-text-secondary hover:text-white'
             }`}
           >
             АКТИВНЫЕ [{activeTasksCount}]
@@ -154,10 +154,10 @@ export function ActionBar() {
               if (settings.soundEnabled) playMechanicalClick(180, 0.015);
               setFilterStatus('completed');
             }}
-            className={`px-2.5 py-1 rounded-[4px] font-mono text-[11px] transition-all whitespace-nowrap ${
+            className={`px-3 py-1.5 rounded-[4px] font-mono text-[11px] transition-all whitespace-nowrap ${
               filterStatus === 'completed'
-                ? 'bg-border-subtle text-text-primary font-semibold shadow-plate border border-border-focus'
-                : 'text-text-muted hover:text-text-secondary'
+                ? 'bg-border-focus text-white font-bold shadow-plate border border-accent-amber/50'
+                : 'text-text-secondary hover:text-white'
             }`}
           >
             АРХИВ [{completedTasksCount}]
@@ -165,13 +165,13 @@ export function ActionBar() {
         </div>
 
         {/* Priority, Tag, Sort Mode Controls */}
-        <div className="flex items-center gap-1.5 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
           
           {/* Priority Filter */}
           <select
             value={filterPriority}
             onChange={(e) => setFilterPriority(e.target.value as PriorityLevel | 'all')}
-            className="px-2 py-1 rounded-[4px] bg-slot border border-border-subtle text-text-secondary hover:text-text-primary font-mono text-[11px] focus:outline-none focus:border-accent-amber"
+            className="px-2.5 py-1.5 rounded-[4px] bg-slot border border-border-subtle text-[#CBD2DE] hover:text-white font-mono text-[11px] focus:outline-none focus:border-accent-amber"
           >
             <option value="all">ВСЕ ПРИОРИТЕТЫ</option>
             <option value="CRITICAL">КРИТИЧЕСКИЙ</option>
@@ -185,7 +185,7 @@ export function ActionBar() {
             <select
               value={filterTag || 'all'}
               onChange={(e) => setFilterTag(e.target.value === 'all' ? null : e.target.value)}
-              className="px-2 py-1 rounded-[4px] bg-slot border border-border-subtle text-text-secondary hover:text-text-primary font-mono text-[11px] focus:outline-none focus:border-accent-amber"
+              className="px-2.5 py-1.5 rounded-[4px] bg-slot border border-border-subtle text-[#CBD2DE] hover:text-white font-mono text-[11px] focus:outline-none focus:border-accent-amber"
             >
               <option value="all">ВСЕ ТЕГИ</option>
               {allTags.map((tag) => (
@@ -198,12 +198,12 @@ export function ActionBar() {
 
           {/* Sort Selector */}
           {viewMode === 'list' && (
-            <div className="flex items-center gap-1 px-2 py-1 rounded-[4px] bg-slot border border-border-subtle text-text-secondary font-mono text-[11px]">
-              <ArrowUpDown className="w-3 h-3 text-text-muted stroke-[1.5]" />
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-[4px] bg-slot border border-border-subtle text-[#CBD2DE] font-mono text-[11px]">
+              <ArrowUpDown className="w-3.5 h-3.5 text-text-muted stroke-[1.5]" />
               <select
                 value={sortMode}
                 onChange={(e) => setSortMode(e.target.value as SortMode)}
-                className="bg-transparent border-none text-[11px] focus:outline-none text-text-secondary hover:text-text-primary"
+                className="bg-transparent border-none text-[11px] focus:outline-none text-[#CBD2DE] hover:text-white"
               >
                 <option value="aiScore">AI SCORE</option>
                 <option value="dueDate">ПО ДЕДЛАЙНУ</option>
@@ -221,11 +221,11 @@ export function ActionBar() {
                 if (settings.soundEnabled) playMechanicalClick(140, 0.02);
                 clearCompleted();
               }}
-              className="p-1.5 text-text-muted hover:text-status-danger rounded-[4px] hover:bg-status-danger/10 border border-transparent hover:border-status-danger/30 transition-all"
+              className="p-2 text-text-muted hover:text-status-danger rounded-[4px] hover:bg-status-danger/10 border border-transparent hover:border-status-danger/30 transition-all"
               title="Очистить архив выполненных задач"
               aria-label="Очистить выполненные"
             >
-              <Trash2 className="w-3.5 h-3.5 stroke-[1.5]" />
+              <Trash2 className="w-4 h-4 stroke-[1.5]" />
             </button>
           )}
 
