@@ -108,6 +108,8 @@ export interface AppSettings {
   model: string;
   autoAnalyzeDefault: boolean;
   theme: 'system' | 'light' | 'dark';
+  soundEnabled: boolean;
+  reducedMotion: boolean;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -115,6 +117,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   model: 'gemini-2.5-flash',
   autoAnalyzeDefault: true,
   theme: 'system',
+  soundEnabled: true,
+  reducedMotion: false,
 };
 
 export function loadStoredTasks(): Task[] {

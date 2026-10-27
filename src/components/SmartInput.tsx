@@ -4,15 +4,16 @@ import React, { useState } from 'react';
 import { useTaskStore } from '@/store/useTaskStore';
 import { PriorityLevel, EisenhowerQuadrant } from '@/types/task';
 import { 
-  Sparkles, 
   Plus, 
   ChevronDown, 
   ChevronUp, 
   Calendar, 
   Clock, 
-  Tag as TagIcon,
-  Loader2 
+  Cpu, 
+  Loader2,
+  Tag as TagIcon
 } from 'lucide-react';
+import { playMechanicalClick, triggerHaptic } from '@/lib/audio';
 
 export function SmartInput() {
   const { 
@@ -27,7 +28,7 @@ export function SmartInput() {
   const [useAi, setUseAi] = useState(true);
   const [isExpanded, setIsExpanded] = useState(false);
 
-  // Manual fields (if expanded)
+  // Manual fields
   const [description, setDescription] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [priority, setPriority] = useState<PriorityLevel>('MEDIUM');
@@ -41,6 +42,9 @@ export function SmartInput() {
     if (e) e.preventDefault();
     const trimmed = inputVal.trim();
     if (!trimmed || isSubmitting) return;
+
+    if (settings.soundEnabled) playMechanicalClick(280, 0.025);
+    triggerHaptic(12);
 
     if (useAi) {
       await createTaskWithSmartInput(trimmed);
@@ -81,193 +85,210 @@ export function SmartInput() {
     }
   };
 
-  const quickPrompts = [
-    'Подготовить квартальный отчет к пятнице',
-    'Исправить баг в авторизации срочно',
-    'Записаться на чекап к врачу на завтра',
-    'Купить кофе и воду для офиса',
-  ];
-
   return (
-    <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-xl shadow-zinc-200/50 dark:shadow-none p-4 sm:p-5 transition-all">
-      <form onSubmit={handleSubmit}>
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-          {/* Main Input */}
-          <div className="relative flex-1">
+    <div className="bg-surface rounded-[8px] border border-border-subtle p-3 sm:p-4 shadow-plate transition-all">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-2.5">
+        
+        {/* Main Input Row */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+          
+          {/* Hardware Slot Input */}
+          <div className="relative flex-1 flex items-center bg-slot border border-border-subtle focus-within:border-accent-amber rounded-[6px] shadow-sunken px-3 py-2 transition-colors">
+            {/* LED Status indicator inside slot */}
+            <span 
+              className={`w-2 h-2 rounded-[2px] mr-2.5 shrink-0 transition-all ${
+                useAi ? 'bg-accent-amber shadow-glow-amber' : 'bg-border-focus'
+              }`}
+              title={useAi ? 'Режим AI анализа активен' : 'Стандартный ввод'} 
+            />
+
             <input
               type="text"
               value={inputVal}
               onChange={(e) => setInputVal(e.target.value)}
               onKeyDown={handleKeyDown}
               disabled={isSubmitting}
-              placeholder="Что нужно сделать? (например: Подготовить квартальный отчет к пятнице)"
-              className="w-full pl-4 pr-10 py-3 rounded-xl bg-zinc-50 dark:bg-zinc-950/70 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 text-sm transition-all"
+              placeholder="+ Введите задачу или цель... [Enter]"
+              className="w-full bg-transparent text-text-primary placeholder:text-text-muted focus:outline-none text-base sm:text-sm font-sans"
             />
+
             {inputVal && (
               <button
                 type="button"
                 onClick={() => setInputVal('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+                className="text-xs text-text-muted hover:text-text-primary px-1.5 py-0.5 rounded-[2px]"
+                aria-label="Очистить ввод"
               >
                 ✕
               </button>
             )}
           </div>
 
-          {/* AI Toggle & Actions */}
-          <div className="flex items-center gap-2 shrink-0">
-            {/* Toggle AI Auto-fill */}
+          {/* Action Buttons Row */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            
+            {/* AI Toggle Rocker */}
             <button
               type="button"
-              onClick={() => setUseAi(!useAi)}
-              className={`flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold border transition-all ${
+              onClick={() => {
+                if (settings.soundEnabled) playMechanicalClick(200, 0.02);
+                setUseAi(!useAi);
+              }}
+              className={`flex items-center gap-1.5 px-2.5 py-2 rounded-[6px] font-mono text-xs border transition-all ${
                 useAi
-                  ? 'bg-violet-500/10 dark:bg-violet-500/20 text-violet-700 dark:text-violet-300 border-violet-500/30 shadow-sm shadow-violet-500/10'
-                  : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700 hover:text-zinc-700 dark:hover:text-zinc-200'
+                  ? 'bg-slot border-border-amberDim text-accent-amber shadow-glow-amber'
+                  : 'bg-slot border-border-subtle text-text-muted hover:text-text-secondary'
               }`}
-              title="Использовать Gemini AI для автоматического определения дедлайна, приоритета и тегов"
+              title="Автоматический разбор даты, времени и приоритета через Google Gemini 2.5 Flash"
             >
-              <Sparkles className={`w-4 h-4 ${useAi ? 'text-violet-500 animate-pulse' : 'text-zinc-400'}`} />
-              <span className="hidden xs:inline">✨ AI Auto-fill</span>
-              <span className={`w-2 h-2 rounded-full ${useAi ? 'bg-violet-500' : 'bg-zinc-400'}`} />
+              <Cpu className="w-3.5 h-3.5 stroke-[1.5]" />
+              <span className="font-display tracking-wider uppercase text-[11px]">
+                {useAi ? 'AI: ВКЛ' : 'AI: ВЫКЛ'}
+              </span>
             </button>
 
-            {/* Expand / Advanced Toggle */}
+            {/* Expand / Manual Parameters Toggle */}
             <button
               type="button"
-              onClick={() => setIsExpanded(!isExpanded)}
-              className="p-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all"
-              title={isExpanded ? 'Скрыть дополнительные поля' : 'Настроить вручную'}
+              onClick={() => {
+                if (settings.soundEnabled) playMechanicalClick(180, 0.02);
+                setIsExpanded(!isExpanded);
+              }}
+              className={`p-2 rounded-[6px] border border-border-subtle text-text-secondary hover:text-text-primary hover:bg-border-subtle/30 transition-all ${
+                isExpanded ? 'bg-border-subtle/40 text-text-primary' : 'bg-slot'
+              }`}
+              title={isExpanded ? 'Свернуть параметры' : 'Настроить параметры вручную'}
+              aria-label="Ручные параметры задачи"
             >
-              {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              {isExpanded ? <ChevronUp className="w-4 h-4 stroke-[1.5]" /> : <ChevronDown className="w-4 h-4 stroke-[1.5]" />}
             </button>
 
-            {/* Add Task Button */}
+            {/* Submit Button */}
             <button
               type="submit"
               disabled={!inputVal.trim() || isSubmitting}
-              className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 active:bg-violet-700 text-white font-medium text-xs shadow-md shadow-violet-600/25 disabled:opacity-50 disabled:pointer-events-none transition-all"
+              className={`flex items-center justify-center gap-1.5 px-4 py-2 rounded-[6px] font-display font-semibold text-xs tracking-wider uppercase transition-all min-h-[40px] ${
+                !inputVal.trim() || isSubmitting
+                  ? 'bg-slot border border-border-subtle text-text-muted cursor-not-allowed'
+                  : 'bg-accent-amber hover:bg-accent-amber-hover active:translate-y-[2px] active:shadow-none text-slot shadow-tactile-dark'
+              }`}
             >
               {isSubmitting ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Анализ...</span>
-                </>
+                <Loader2 className="w-4 h-4 animate-spin text-slot" />
               ) : (
                 <>
-                  <Plus className="w-4 h-4" />
-                  <span>Добавить</span>
+                  <Plus className="w-4 h-4 stroke-[2]" />
+                  <span>ДОБАВИТЬ</span>
                 </>
               )}
             </button>
           </div>
         </div>
 
-        {/* Quick Sample Prompts */}
-        {!isExpanded && !inputVal && (
-          <div className="flex flex-wrap items-center gap-1.5 mt-3 pt-2 text-[11px] text-zinc-500 dark:text-zinc-400">
-            <span className="flex items-center gap-1 font-medium text-zinc-400 dark:text-zinc-500">
-              <Sparkles className="w-3 h-3 text-violet-400" />
-              Примеры:
-            </span>
-            {quickPrompts.map((prompt, idx) => (
-              <button
-                key={idx}
-                type="button"
-                onClick={() => setInputVal(prompt)}
-                className="px-2.5 py-1 rounded-lg bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800/60 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-300 transition-colors"
-              >
-                {prompt}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Expanded Manual Options */}
+        {/* Collapsible Manual Parameters (Segmented Controls) */}
         {isExpanded && (
-          <div className="mt-4 pt-4 border-t border-zinc-100 dark:border-zinc-800/80 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs animate-in fade-in slide-in-from-top-2">
+          <div className="pt-3 border-t border-border-subtle grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 text-xs">
+            
+            {/* Description */}
             <div>
-              <label className="block text-zinc-600 dark:text-zinc-400 font-medium mb-1">
-                Описание / Детали
+              <label className="block text-text-muted font-mono text-[11px] mb-1">
+                ДЕТАЛИ / ОПИСАНИЕ
               </label>
               <input
                 type="text"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Подробности задачи..."
-                className="w-full px-3 py-2 rounded-lg bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-violet-500"
+                className="w-full px-2.5 py-1.5 rounded-[4px] bg-slot border border-border-subtle text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-amber font-sans text-base sm:text-xs"
               />
             </div>
 
+            {/* Due Date */}
             <div>
-              <label className="block text-zinc-600 dark:text-zinc-400 font-medium mb-1 flex items-center gap-1">
-                <Calendar className="w-3.5 h-3.5 text-zinc-400" />
-                Срок (Дедлайн)
+              <label className="block text-text-muted font-mono text-[11px] mb-1 flex items-center gap-1">
+                <Calendar className="w-3 h-3 text-text-muted stroke-[1.5]" />
+                ДЕРОК / ДЕДЛАЙН
               </label>
               <input
                 type="date"
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-violet-500"
+                className="w-full px-2.5 py-1.5 rounded-[4px] bg-slot border border-border-subtle text-text-primary focus:outline-none focus:border-accent-amber font-mono text-base sm:text-xs"
               />
             </div>
 
+            {/* Priority Segmented Control */}
             <div>
-              <label className="block text-zinc-600 dark:text-zinc-400 font-medium mb-1">
-                Приоритет и Квадрант
+              <label className="block text-text-muted font-mono text-[11px] mb-1">
+                ПРИОРИТЕТ
               </label>
-              <div className="grid grid-cols-2 gap-2">
-                <select
-                  value={priority}
-                  onChange={(e) => setPriority(e.target.value as PriorityLevel)}
-                  className="w-full px-2 py-2 rounded-lg bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-violet-500"
-                >
-                  <option value="CRITICAL">Критический</option>
-                  <option value="HIGH">Высокий</option>
-                  <option value="MEDIUM">Средний</option>
-                  <option value="LOW">Низкий</option>
-                </select>
-                <select
-                  value={quadrant}
-                  onChange={(e) => setQuadrant(e.target.value as EisenhowerQuadrant)}
-                  className="w-full px-2 py-2 rounded-lg bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-violet-500"
-                >
-                  <option value="DO_FIRST">Q1: Сделать сейчас</option>
-                  <option value="SCHEDULE">Q2: Запланировать</option>
-                  <option value="DELEGATE">Q3: Делегировать</option>
-                  <option value="DELETE">Q4: Исключить</option>
-                </select>
+              <div className="grid grid-cols-4 gap-1 p-0.5 rounded-[4px] bg-slot border border-border-subtle">
+                {(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] as PriorityLevel[]).map((p) => {
+                  const labels: Record<PriorityLevel, string> = {
+                    LOW: 'НИЗК',
+                    MEDIUM: 'СРЕД',
+                    HIGH: 'ВЫС',
+                    CRITICAL: 'КРИТ',
+                  };
+                  return (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => {
+                        if (settings.soundEnabled) playMechanicalClick(200, 0.015);
+                        setPriority(p);
+                      }}
+                      className={`py-1 rounded-[2px] font-mono text-[10px] uppercase font-semibold transition-all ${
+                        priority === p
+                          ? 'bg-border-focus text-text-primary shadow-plate'
+                          : 'text-text-muted hover:text-text-secondary'
+                      }`}
+                    >
+                      {labels[p]}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
+            {/* Quadrant Segmented Control */}
             <div>
-              <label className="block text-zinc-600 dark:text-zinc-400 font-medium mb-1 flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5 text-zinc-400" />
-                Время (мин) и Теги
+              <label className="block text-text-muted font-mono text-[11px] mb-1">
+                КВАДРАНТ ЭЙЗЕНХАУЭРА
               </label>
-              <div className="grid grid-cols-2 gap-2">
-                <input
-                  type="number"
-                  min="5"
-                  step="5"
-                  value={estimatedMinutes || ''}
-                  onChange={(e) => setEstimatedMinutes(e.target.value ? parseInt(e.target.value, 10) : undefined)}
-                  placeholder="30"
-                  className="w-full px-3 py-2 rounded-lg bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-violet-500"
-                />
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={tagInput}
-                    onChange={(e) => setTagInput(e.target.value)}
-                    placeholder="теги, через запятую"
-                    className="w-full px-3 py-2 rounded-lg bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-violet-500"
-                  />
-                </div>
+              <div className="grid grid-cols-4 gap-1 p-0.5 rounded-[4px] bg-slot border border-border-subtle">
+                {(['DO_FIRST', 'SCHEDULE', 'DELEGATE', 'DELETE'] as EisenhowerQuadrant[]).map((q) => {
+                  const labels: Record<EisenhowerQuadrant, string> = {
+                    DO_FIRST: 'Q1',
+                    SCHEDULE: 'Q2',
+                    DELEGATE: 'Q3',
+                    DELETE: 'Q4',
+                  };
+                  return (
+                    <button
+                      key={q}
+                      type="button"
+                      onClick={() => {
+                        if (settings.soundEnabled) playMechanicalClick(200, 0.015);
+                        setQuadrant(q);
+                      }}
+                      className={`py-1 rounded-[2px] font-mono text-[10px] font-bold uppercase transition-all ${
+                        quadrant === q
+                          ? 'bg-accent-amber/20 border border-accent-amber/40 text-accent-amber'
+                          : 'text-text-muted hover:text-text-secondary'
+                      }`}
+                      title={q}
+                    >
+                      {labels[q]}
+                    </button>
+                  );
+                })}
               </div>
             </div>
+
           </div>
         )}
+
       </form>
     </div>
   );

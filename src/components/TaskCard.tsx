@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Task, Subtask } from '@/types/task';
+import { Task } from '@/types/task';
 import { useTaskStore } from '@/store/useTaskStore';
 import { 
   PRIORITY_CONFIG, 
@@ -12,19 +12,17 @@ import {
 import { 
   Check, 
   Clock, 
-  Lightbulb, 
-  Sparkles, 
+  Cpu, 
   ChevronDown, 
   ChevronRight, 
   Plus, 
   Trash2, 
   Edit3, 
   Calendar, 
-  Loader2, 
-  CheckSquare, 
-  Square, 
-  Tag as TagIcon 
+  Loader2,
+  Info
 } from 'lucide-react';
+import { playMechanicalClick, triggerHaptic } from '@/lib/audio';
 
 interface TaskCardProps {
   task: Task;
@@ -43,6 +41,7 @@ export function TaskCard({ task, compact = false }: TaskCardProps) {
     isAiLoading,
     aiActionType,
     activeProcessingTaskId,
+    settings,
   } = useTaskStore();
 
   const [isSubtasksOpen, setIsSubtasksOpen] = useState(false);
@@ -60,67 +59,97 @@ export function TaskCard({ task, compact = false }: TaskCardProps) {
   const totalSubtasks = task.subtasks.length;
   const subtaskPercentage = totalSubtasks > 0 ? Math.round((completedSubtasks / totalSubtasks) * 100) : 0;
 
+  const handleToggleComplete = () => {
+    if (settings.soundEnabled) playMechanicalClick(task.isCompleted ? 180 : 320, 0.02);
+    triggerHaptic(12);
+    toggleTaskComplete(task.id);
+  };
+
   const handleAddSubtask = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newSubtaskTitle.trim()) return;
+    if (settings.soundEnabled) playMechanicalClick(240, 0.015);
     addSubtask(task.id, newSubtaskTitle.trim());
     setNewSubtaskTitle('');
   };
 
+  const priorityColors: Record<string, { pip: string; border: string; text: string }> = {
+    CRITICAL: { pip: 'bg-status-danger', border: 'border-status-danger/40', text: 'text-status-danger' },
+    HIGH: { pip: 'bg-accent-amber', border: 'border-accent-amber/40', text: 'text-accent-amber' },
+    MEDIUM: { pip: 'bg-status-info', border: 'border-status-info/40', text: 'text-status-info' },
+    LOW: { pip: 'bg-text-muted', border: 'border-border-subtle', text: 'text-text-muted' },
+  };
+  const pColor = priorityColors[task.priority] || priorityColors.MEDIUM;
+
   return (
-    <div
-      className={`relative group rounded-2xl border transition-all duration-300 ${
+    <article
+      className={`relative group rounded-[6px] border transition-all duration-150 ${
         task.isCompleted
-          ? 'bg-zinc-50/70 dark:bg-zinc-900/40 border-zinc-200 dark:border-zinc-800/60 opacity-65'
-          : 'bg-white dark:bg-zinc-900 border-zinc-200/90 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 shadow-sm hover:shadow-md'
-      } ${compact ? 'p-3' : 'p-4 sm:p-5'} overflow-hidden`}
+          ? 'bg-slot/60 border-border-subtle/50 opacity-60'
+          : 'bg-surface border-border-subtle hover:border-border-focus hover:border-t-[#404552] shadow-plate'
+      } ${compact ? 'p-2.5 sm:p-3' : 'p-3 sm:p-3.5'} overflow-hidden`}
     >
-      {/* Shimmer glowing skeleton overlay during AI prioritization */}
+      {/* Laser progress line during AI prioritization */}
       {isPrioritizing && !task.isCompleted && (
-        <div className="absolute inset-0 z-20 pointer-events-none bg-gradient-to-r from-transparent via-violet-500/10 dark:via-violet-400/15 to-transparent animate-shimmer bg-[length:200%_100%]" />
+        <div className="absolute top-0 left-0 right-0 h-[2px] bg-accent-amber animate-laser z-20 shadow-glow-amber" />
       )}
 
-      {/* Main card header & check */}
-      <div className="flex items-start gap-3">
-        {/* Completion Checkbox */}
-        <button
-          onClick={() => toggleTaskComplete(task.id)}
-          className={`shrink-0 mt-0.5 w-5 h-5 rounded-lg border flex items-center justify-center transition-all ${
-            task.isCompleted
-              ? 'bg-emerald-500 border-emerald-500 text-white shadow-sm'
-              : 'border-zinc-300 dark:border-zinc-700 hover:border-violet-500 dark:hover:border-violet-400 text-transparent hover:text-violet-500/30'
-          }`}
-          aria-label={task.isCompleted ? 'Отметить как незавершенную' : 'Отметить как выполненную'}
-        >
-          <Check className="w-3.5 h-3.5 stroke-[2.5]" />
-        </button>
+      {/* Main Row */}
+      <div className="flex items-start gap-2.5 sm:gap-3">
+        
+        {/* Mechanical Checkbox (44px touch target) */}
+        <div className="shrink-0 -m-2 p-2">
+          <button
+            type="button"
+            onClick={handleToggleComplete}
+            className={`w-[18px] h-[18px] rounded-[3px] border flex items-center justify-center transition-all ${
+              task.isCompleted
+                ? 'bg-status-success border-status-success text-slot shadow-glow-green'
+                : 'bg-slot border-border-focus hover:border-accent-amber text-transparent'
+            }`}
+            aria-label={task.isCompleted ? 'Отметить как незавершенную' : 'Отметить как выполненную'}
+          >
+            <Check className="w-3 h-3 stroke-[3]" />
+          </button>
+        </div>
 
         {/* Task Content */}
         <div className="flex-1 min-w-0">
-          <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
-            {/* Priority Badge */}
+          
+          {/* Metadata badges row */}
+          <div className="flex flex-wrap items-center gap-1.5 mb-1 text-[11px] font-mono select-none">
+            
+            {/* Priority Indicator */}
             <span
-              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold border ${priorityStyle.bg} ${priorityStyle.text} ${priorityStyle.border}`}
+              className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-[2px] border ${pColor.border} bg-slot ${pColor.text} text-[10px] font-bold tracking-wider`}
             >
-              <span className={`w-1.5 h-1.5 rounded-full ${priorityStyle.dot}`} />
-              {priorityStyle.label}
+              <span className={`w-1.5 h-1.5 rounded-full ${pColor.pip}`} />
+              {task.priority}
             </span>
+
+            {/* Quadrant Badge */}
+            {task.quadrant && (
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded-[2px] border border-border-subtle bg-slot text-text-secondary text-[10px]">
+                {task.quadrant === 'DO_FIRST' ? 'Q1 // ФОКУС' :
+                 task.quadrant === 'SCHEDULE' ? 'Q2 // ПЛАН' :
+                 task.quadrant === 'DELEGATE' ? 'Q3 // ПОРУЧИТЬ' : 'Q4 // СБРОС'}
+              </span>
+            )}
 
             {/* AI Score Badge */}
             {typeof task.aiScore === 'number' && !task.isCompleted && (
               <span
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-violet-500/10 text-violet-700 dark:text-violet-300 border border-violet-500/20"
-                title={`Индекс приоритетности Gemini: ${task.aiScore}/100`}
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-[2px] border border-border-amberDim bg-slot text-accent-amber text-[10px]"
+                title={`Индекс приоритета Gemini: ${task.aiScore}/100`}
               >
-                <Sparkles className="w-2.5 h-2.5 text-violet-500" />
-                Score: {task.aiScore}
+                SCORE: {task.aiScore}
               </span>
             )}
 
             {/* Estimated Time Badge */}
             {task.estimatedMinutes ? (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700">
-                <Clock className="w-2.5 h-2.5 text-zinc-400" />
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-[2px] border border-border-subtle bg-slot text-text-muted text-[10px]">
+                <Clock className="w-2.5 h-2.5 stroke-[1.5]" />
                 {formatEstimatedTime(task.estimatedMinutes)}
               </span>
             ) : null}
@@ -128,52 +157,38 @@ export function TaskCard({ task, compact = false }: TaskCardProps) {
             {/* Due Date Badge */}
             {task.dueDate && (
               <span
-                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium border ${
+                className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-[2px] border text-[10px] ${
                   dueDateInfo.isOverdue
-                    ? 'bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/30'
+                    ? 'border-status-danger/40 bg-slot text-status-danger'
                     : dueDateInfo.isToday
-                    ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30'
-                    : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700'
+                    ? 'border-accent-amber/40 bg-slot text-accent-amber'
+                    : 'border-border-subtle bg-slot text-text-muted'
                 }`}
               >
-                <Calendar className="w-2.5 h-2.5" />
+                <Calendar className="w-2.5 h-2.5 stroke-[1.5]" />
                 {dueDateInfo.text}
               </span>
             )}
 
-            {/* Eisenhower Quadrant Badge (if set) */}
-            {quadrantStyle && (
-              <span
-                className={`hidden sm:inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border ${quadrantStyle.headerBg} ${quadrantStyle.borderColor}`}
-              >
-                {quadrantStyle.subtitle}
-              </span>
-            )}
-
-            {/* AI Reasoning Tooltip Button */}
+            {/* AI Reasoning Popover Toggle */}
             {task.aiReasoning && (
               <div className="relative">
                 <button
                   type="button"
                   onClick={() => setShowAiReasoning(!showAiReasoning)}
-                  onMouseEnter={() => setShowAiReasoning(true)}
-                  onMouseLeave={() => setShowAiReasoning(false)}
-                  className="p-1 rounded-md text-amber-500 hover:bg-amber-500/10 transition-colors"
-                  title="Почему Gemini выбрал этот приоритет?"
+                  className="p-0.5 rounded-[2px] text-text-muted hover:text-accent-amber transition-colors"
+                  title="Обоснование AI"
                   aria-label="Обоснование AI"
                 >
-                  <Lightbulb className="w-3.5 h-3.5" />
+                  <Info className="w-3 h-3 stroke-[1.5]" />
                 </button>
 
-                {/* Popover / Tooltip */}
                 {showAiReasoning && (
-                  <div className="absolute left-0 bottom-full mb-2 z-30 w-64 p-3 rounded-xl bg-zinc-900 text-white text-xs shadow-xl border border-zinc-700 backdrop-blur-md animate-in fade-in zoom-in-95">
-                    <div className="flex items-center gap-1.5 font-semibold text-amber-400 mb-1">
-                      <Sparkles className="w-3.5 h-3.5" />
-                      Обоснование Gemini AI:
-                    </div>
-                    <p className="text-zinc-200 leading-relaxed">{task.aiReasoning}</p>
-                    <div className="absolute top-full left-4 -mt-1 border-4 border-transparent border-t-zinc-900" />
+                  <div className="absolute left-0 bottom-full mb-1.5 z-30 w-64 p-2.5 rounded-[4px] bg-slot border border-border-focus text-text-secondary text-xs shadow-plate">
+                    <p className="font-mono text-[10px] text-accent-amber uppercase mb-1">
+                      ФАКТОРЫ GEMINI AI:
+                    </p>
+                    <p className="leading-relaxed font-sans text-text-primary text-[11px]">{task.aiReasoning}</p>
                   </div>
                 )}
               </div>
@@ -182,8 +197,8 @@ export function TaskCard({ task, compact = false }: TaskCardProps) {
 
           {/* Title */}
           <h3
-            className={`text-sm sm:text-base font-semibold text-zinc-900 dark:text-zinc-100 leading-snug break-words ${
-              task.isCompleted ? 'line-through text-zinc-400 dark:text-zinc-500' : ''
+            className={`text-sm sm:text-[15px] font-sans font-medium text-text-primary leading-snug break-words ${
+              task.isCompleted ? 'line-through text-text-muted' : ''
             }`}
           >
             {task.title}
@@ -192,8 +207,8 @@ export function TaskCard({ task, compact = false }: TaskCardProps) {
           {/* Description */}
           {task.description && (
             <p
-              className={`text-xs sm:text-sm text-zinc-600 dark:text-zinc-400 mt-1 leading-relaxed break-words ${
-                task.isCompleted ? 'line-through opacity-70' : ''
+              className={`text-xs text-text-secondary mt-1 leading-relaxed break-words font-sans ${
+                task.isCompleted ? 'line-through opacity-60' : ''
               }`}
             >
               {task.description}
@@ -202,11 +217,11 @@ export function TaskCard({ task, compact = false }: TaskCardProps) {
 
           {/* Tags */}
           {task.tags && task.tags.length > 0 && (
-            <div className="flex flex-wrap items-center gap-1 mt-2">
+            <div className="flex flex-wrap items-center gap-1 mt-1.5">
               {task.tags.map((tag, idx) => (
                 <span
                   key={idx}
-                  className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-medium bg-zinc-100 dark:bg-zinc-800/80 text-zinc-600 dark:text-zinc-400"
+                  className="inline-flex items-center px-1.5 py-0.5 rounded-[2px] font-mono text-[10px] text-text-muted bg-slot border border-border-subtle"
                 >
                   #{tag}
                 </span>
@@ -214,77 +229,88 @@ export function TaskCard({ task, compact = false }: TaskCardProps) {
             </div>
           )}
 
-          {/* Subtasks Summary & Controls */}
-          <div className="mt-3 pt-2.5 border-t border-zinc-100 dark:border-zinc-800/60">
+          {/* Subtasks Section */}
+          <div className="mt-2.5 pt-2 border-t border-border-subtle/60">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              {/* Toggle subtasks accordion */}
+              
+              {/* Toggle Subtasks */}
               <button
                 type="button"
-                onClick={() => setIsSubtasksOpen(!isSubtasksOpen)}
-                className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors"
+                onClick={() => {
+                  if (settings.soundEnabled) playMechanicalClick(160, 0.015);
+                  setIsSubtasksOpen(!isSubtasksOpen);
+                }}
+                className="flex items-center gap-1.5 font-mono text-[11px] text-text-secondary hover:text-text-primary transition-colors"
               >
                 {isSubtasksOpen ? (
-                  <ChevronDown className="w-3.5 h-3.5 text-zinc-400" />
+                  <ChevronDown className="w-3 h-3 text-text-muted stroke-[1.5]" />
                 ) : (
-                  <ChevronRight className="w-3.5 h-3.5 text-zinc-400" />
+                  <ChevronRight className="w-3 h-3 text-text-muted stroke-[1.5]" />
                 )}
                 <span>
-                  Подзадачи {totalSubtasks > 0 && `(${completedSubtasks}/${totalSubtasks})`}
+                  ШАГИ {totalSubtasks > 0 && `[${completedSubtasks}/${totalSubtasks}]`}
                 </span>
                 {totalSubtasks > 0 && (
-                  <div className="w-12 h-1 rounded-full bg-zinc-200 dark:bg-zinc-800 overflow-hidden ml-1">
+                  <div className="w-10 h-1 rounded-[1px] bg-slot overflow-hidden ml-1 border border-border-subtle">
                     <div
-                      className="h-full bg-emerald-500 transition-all duration-300"
+                      className="h-full bg-status-success transition-all duration-300"
                       style={{ width: `${subtaskPercentage}%` }}
                     />
                   </div>
                 )}
               </button>
 
-              {/* Decompose with AI button */}
+              {/* Decompose button */}
               {!task.isCompleted && (
                 <button
                   type="button"
-                  onClick={() => decomposeTaskWithAI(task.id)}
+                  onClick={() => {
+                    if (settings.soundEnabled) playMechanicalClick(220, 0.02);
+                    decomposeTaskWithAI(task.id);
+                  }}
                   disabled={isDecomposing || isAiLoading}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium bg-violet-50 dark:bg-violet-950/40 hover:bg-violet-100 dark:hover:bg-violet-900/50 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-800/60 transition-all disabled:opacity-50"
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[3px] font-display font-semibold text-[10px] tracking-wider uppercase border border-border-subtle bg-slot text-text-secondary hover:text-text-primary hover:border-border-focus transition-all disabled:opacity-50"
                   title="Gemini разобьет сложную задачу на 3-5 конкретных подзадач"
                 >
                   {isDecomposing ? (
                     <>
-                      <Loader2 className="w-3 h-3 animate-spin text-violet-500" />
-                      <span>Генерация шагов...</span>
+                      <Loader2 className="w-2.5 h-2.5 animate-spin text-accent-amber" />
+                      <span>РАСЧЕТ...</span>
                     </>
                   ) : (
                     <>
-                      <Sparkles className="w-3 h-3 text-violet-500" />
-                      <span>{totalSubtasks === 0 ? 'Разбить на шаги' : '+ AI шаги'}</span>
+                      <Cpu className="w-2.5 h-2.5 stroke-[1.5] text-accent-amber" />
+                      <span>{totalSubtasks === 0 ? 'ШАГИ С AI' : '+ AI ШАГИ'}</span>
                     </>
                   )}
                 </button>
               )}
             </div>
 
-            {/* Subtasks Accordion Content */}
+            {/* Subtasks Accordion */}
             {isSubtasksOpen && (
-              <div className="mt-2.5 pl-2 space-y-1.5 text-xs animate-in fade-in duration-200">
+              <div className="mt-2 pl-2 space-y-1 text-xs border-l border-border-subtle">
                 {task.subtasks.map((st) => (
                   <div
                     key={st.id}
-                    className="flex items-center justify-between gap-2 group/st py-1 px-2 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
+                    className="flex items-center justify-between gap-2 py-1 px-1.5 rounded-[3px] hover:bg-slot/60 group/st"
                   >
                     <label className="flex items-center gap-2 cursor-pointer flex-1 min-w-0">
                       <input
                         type="checkbox"
                         checked={st.isCompleted}
-                        onChange={() => toggleSubtask(task.id, st.id)}
-                        className="rounded border-zinc-300 text-violet-600 focus:ring-violet-500 w-3.5 h-3.5"
+                        onChange={() => {
+                          if (settings.soundEnabled) playMechanicalClick(st.isCompleted ? 160 : 280, 0.015);
+                          triggerHaptic(8);
+                          toggleSubtask(task.id, st.id);
+                        }}
+                        className="rounded-[2px] bg-slot border-border-focus text-accent-amber focus:ring-0 w-3.5 h-3.5"
                       />
                       <span
-                        className={`truncate ${
+                        className={`truncate font-sans text-xs ${
                           st.isCompleted
-                            ? 'line-through text-zinc-400 dark:text-zinc-500'
-                            : 'text-zinc-700 dark:text-zinc-300'
+                            ? 'line-through text-text-muted'
+                            : 'text-text-primary'
                         }`}
                       >
                         {st.title}
@@ -292,11 +318,14 @@ export function TaskCard({ task, compact = false }: TaskCardProps) {
                     </label>
                     <button
                       type="button"
-                      onClick={() => deleteSubtask(task.id, st.id)}
-                      className="opacity-0 group-hover/st:opacity-100 text-zinc-400 hover:text-rose-500 p-1 transition-opacity"
-                      aria-label="Удалить подзадачу"
+                      onClick={() => {
+                        if (settings.soundEnabled) playMechanicalClick(140, 0.015);
+                        deleteSubtask(task.id, st.id);
+                      }}
+                      className="opacity-60 sm:opacity-0 group-hover/st:opacity-100 text-text-muted hover:text-status-danger p-1 transition-opacity"
+                      aria-label="Удалить шаг"
                     >
-                      <Trash2 className="w-3 h-3" />
+                      <Trash2 className="w-3 h-3 stroke-[1.5]" />
                     </button>
                   </div>
                 ))}
@@ -307,15 +336,16 @@ export function TaskCard({ task, compact = false }: TaskCardProps) {
                     type="text"
                     value={newSubtaskTitle}
                     onChange={(e) => setNewSubtaskTitle(e.target.value)}
-                    placeholder="Добавить шаг вручную..."
-                    className="flex-1 px-2.5 py-1.5 rounded-lg bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-violet-500"
+                    placeholder="+ Добавить шаг вручную..."
+                    className="flex-1 px-2 py-1 rounded-[3px] bg-slot border border-border-subtle text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-amber font-sans"
                   />
                   <button
                     type="submit"
                     disabled={!newSubtaskTitle.trim()}
-                    className="p-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 disabled:opacity-40 transition-colors"
+                    className="p-1 rounded-[3px] bg-border-subtle hover:bg-border-focus text-text-primary disabled:opacity-40 transition-colors"
+                    aria-label="Сохранить шаг"
                   >
-                    <Plus className="w-3.5 h-3.5" />
+                    <Plus className="w-3.5 h-3.5 stroke-[2]" />
                   </button>
                 </form>
               </div>
@@ -324,25 +354,34 @@ export function TaskCard({ task, compact = false }: TaskCardProps) {
         </div>
 
         {/* Card Right Actions (Edit / Delete) */}
-        <div className="flex items-center gap-1 opacity-80 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="flex items-center gap-0.5 opacity-90 sm:opacity-0 group-hover:opacity-100 transition-opacity">
           <button
             type="button"
-            onClick={() => setEditingTask(task)}
-            className="p-1.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
-            title="Редактировать"
+            onClick={() => {
+              if (settings.soundEnabled) playMechanicalClick(180, 0.015);
+              setEditingTask(task);
+            }}
+            className="p-1.5 text-text-muted hover:text-text-primary hover:bg-slot rounded-[3px] transition-colors"
+            title="Редактировать задачу"
+            aria-label="Редактировать"
           >
-            <Edit3 className="w-3.5 h-3.5" />
+            <Edit3 className="w-3.5 h-3.5 stroke-[1.5]" />
           </button>
           <button
             type="button"
-            onClick={() => deleteTask(task.id)}
-            className="p-1.5 text-zinc-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg transition-colors"
-            title="Удалить"
+            onClick={() => {
+              if (settings.soundEnabled) playMechanicalClick(140, 0.02);
+              triggerHaptic(10);
+              deleteTask(task.id);
+            }}
+            className="p-1.5 text-text-muted hover:text-status-danger hover:bg-status-danger/10 rounded-[3px] transition-colors"
+            title="Удалить задачу"
+            aria-label="Удалить"
           >
-            <Trash2 className="w-3.5 h-3.5" />
+            <Trash2 className="w-3.5 h-3.5 stroke-[1.5]" />
           </button>
         </div>
       </div>
-    </div>
+    </article>
   );
 }

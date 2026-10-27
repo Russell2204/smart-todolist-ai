@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { useTaskStore } from '@/store/useTaskStore';
-import { X, Key, Eye, EyeOff, Sparkles, ExternalLink, Loader2, CheckCircle2 } from 'lucide-react';
+import { X, KeyRound, Eye, EyeOff, ExternalLink, Loader2, Cpu } from 'lucide-react';
+import { playMechanicalClick, triggerHaptic } from '@/lib/audio';
 
 export function ApiKeyModal() {
   const {
@@ -31,130 +32,149 @@ export function ApiKeyModal() {
     e.preventDefault();
     if (!keyInput.trim()) return;
 
+    if (settings.soundEnabled) playMechanicalClick(280, 0.02);
+    triggerHaptic(12);
+
     setIsSaving(true);
     await saveUserApiKey(keyInput.trim(), model);
     setIsSaving(false);
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-2xl max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-200">
-        {/* Header */}
-        <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 bg-gradient-to-br from-violet-500/10 via-fuchsia-500/5 to-transparent relative">
-          <button
-            onClick={() => setIsApiKeyModalOpen(false)}
-            className="absolute top-5 right-5 p-1 rounded-xl text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
+  const handleClose = () => {
+    if (settings.soundEnabled) playMechanicalClick(180, 0.015);
+    setIsApiKeyModalOpen(false);
+  };
 
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-violet-600 to-indigo-600 text-white flex items-center justify-center shadow-lg shadow-violet-500/25">
-              <Sparkles className="w-5 h-5" />
-            </div>
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-xs">
+      <div className="bg-surface rounded-t-[12px] sm:rounded-[8px] border border-border-subtle shadow-plate max-w-md w-full max-h-[85vh] flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-150">
+        
+        {/* Header */}
+        <div className="p-4 sm:p-5 border-b border-border-subtle bg-surface select-none flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <span className="w-2.5 h-2.5 rounded-[2px] bg-accent-amber shadow-glow-amber" />
             <div>
-              <h2 className="text-base font-bold text-zinc-900 dark:text-zinc-50">
-                Привязка Google API Key
+              <h2 className="font-display font-bold text-sm sm:text-base tracking-wider uppercase text-text-primary">
+                КОНФИГУРАЦИЯ GOOGLE GEMINI KEY
               </h2>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                Персональный ключ для AI-функций
+              <p className="font-mono text-[10px] text-text-muted mt-0.5">
+                Персональная квота для AI-сортировки и декомпозиции
               </p>
             </div>
           </div>
+          <button
+            type="button"
+            onClick={handleClose}
+            className="w-8 h-8 flex items-center justify-center text-text-muted hover:text-text-primary rounded-[3px] hover:bg-slot transition-colors"
+            aria-label="Закрыть"
+          >
+            <X className="w-4 h-4 stroke-[1.5]" />
+          </button>
         </div>
 
-        {/* Content */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4 text-xs sm:text-sm">
-          <div className="p-3.5 rounded-2xl bg-violet-50 dark:bg-violet-950/40 border border-violet-200 dark:border-violet-800/60 text-xs leading-relaxed text-zinc-700 dark:text-zinc-300">
-            Каждый пользователь использует свой собственный бесплатный ключ <strong>Google Gemini API</strong>. Ключ привязывается к вашему аккаунту и безопасно сохраняется в базе данных Neon.
+        {/* Form Body */}
+        <form onSubmit={handleSubmit} className="p-4 sm:p-5 space-y-3.5 text-xs overflow-y-auto">
+          
+          {/* Informational telemetry note */}
+          <div className="p-3 rounded-[4px] bg-slot border border-border-subtle text-text-secondary leading-relaxed font-sans text-xs">
+            Требуется личный ключ Google Gemini. Запросы отправляются напрямую в рамках вашей персональной квоты. Ключ хранится в зашифрованном виде.
           </div>
 
           <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="font-semibold text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
-                <Key className="w-3.5 h-3.5 text-zinc-400" />
-                Google Gemini API Key
+            <div className="flex items-center justify-between mb-1.5 font-mono text-[11px]">
+              <label className="text-text-muted uppercase flex items-center gap-1.5">
+                <KeyRound className="w-3.5 h-3.5 text-accent-amber stroke-[1.5]" />
+                API КЛЮЧ *
               </label>
               <a
                 href="https://aistudio.google.com/app/apikey"
                 target="_blank"
                 rel="noreferrer"
-                className="text-[11px] font-medium text-violet-600 dark:text-violet-400 hover:underline flex items-center gap-1"
+                className="text-accent-amber hover:underline flex items-center gap-1 uppercase"
               >
-                <span>Получить ключ бесплатно</span>
-                <ExternalLink className="w-3 h-3" />
+                <span>Получить в AI Studio</span>
+                <ExternalLink className="w-3 h-3 stroke-[1.5]" />
               </a>
             </div>
 
-            <div className="relative">
+            <div className="relative flex items-center bg-slot border border-border-subtle focus-within:border-accent-amber rounded-[4px] px-3 py-2">
               <input
                 type={showKey ? 'text' : 'password'}
                 required
                 value={keyInput}
                 onChange={(e) => setKeyInput(e.target.value)}
                 placeholder="AIzaSy..."
-                className="w-full pl-3.5 pr-10 py-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 font-mono"
+                className="w-full bg-transparent text-text-primary placeholder:text-text-muted focus:outline-none text-base sm:text-xs font-mono"
               />
               <button
                 type="button"
                 onClick={() => setShowKey(!showKey)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+                className="text-text-muted hover:text-text-primary ml-2 p-1"
+                aria-label="Показать/скрыть ключ"
               >
-                {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                {showKey ? <EyeOff className="w-3.5 h-3.5 stroke-[1.5]" /> : <Eye className="w-3.5 h-3.5 stroke-[1.5]" />}
               </button>
             </div>
-            <p className="text-[11px] text-zinc-500 mt-1">
-              Google AI Studio предоставляет бесплатный тариф без привязки банковской карты.
-            </p>
           </div>
 
+          {/* Model Selection Segmented Controls */}
           <div>
-            <label className="block font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">
-              Модель Gemini
+            <label className="block font-mono text-[11px] text-text-muted uppercase mb-1">
+              РАБОЧАЯ МОДЕЛЬ
             </label>
-            <select
-              value={model}
-              onChange={(e) => setModel(e.target.value)}
-              className="w-full px-3 py-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 text-xs focus:outline-none focus:ring-2 focus:ring-violet-500"
-            >
-              <option value="gemini-2.5-flash">
-                gemini-2.5-flash (Рекомендуемая по спецификации)
-              </option>
-              <option value="gemini-2.0-flash">
-                gemini-2.0-flash (Быстрая и стабильная)
-              </option>
-              <option value="gemini-1.5-flash">
-                gemini-1.5-flash (Базовая)
-              </option>
-            </select>
+            <div className="grid grid-cols-2 gap-1 p-0.5 rounded-[4px] bg-slot border border-border-subtle font-mono text-[11px]">
+              <button
+                type="button"
+                onClick={() => {
+                  if (settings.soundEnabled) playMechanicalClick(200, 0.015);
+                  setModel('gemini-2.5-flash');
+                }}
+                className={`py-1.5 rounded-[2px] transition-all font-semibold ${
+                  model === 'gemini-2.5-flash'
+                    ? 'bg-border-subtle text-text-primary shadow-plate border border-border-focus'
+                    : 'text-text-muted hover:text-text-secondary'
+                }`}
+              >
+                2.5 FLASH (РЕК.)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (settings.soundEnabled) playMechanicalClick(200, 0.015);
+                  setModel('gemini-2.0-flash');
+                }}
+                className={`py-1.5 rounded-[2px] transition-all font-semibold ${
+                  model === 'gemini-2.0-flash'
+                    ? 'bg-border-subtle text-text-primary shadow-plate border border-border-focus'
+                    : 'text-text-muted hover:text-text-secondary'
+                }`}
+              >
+                2.0 FLASH
+              </button>
+            </div>
           </div>
 
-          <div className="flex items-center justify-end gap-2 pt-2">
-            <button
-              type="button"
-              onClick={() => setIsApiKeyModalOpen(false)}
-              className="px-4 py-2.5 rounded-xl text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-xs font-medium transition-colors"
-            >
-              Позже
-            </button>
+          {/* Submit Button */}
+          <div className="pt-2">
             <button
               type="submit"
               disabled={isSaving || !keyInput.trim()}
-              className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold text-xs shadow-md shadow-violet-600/25 disabled:opacity-50 transition-all"
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-[4px] font-display font-semibold text-xs tracking-wider uppercase bg-accent-amber hover:bg-accent-amber-hover text-slot shadow-tactile-dark active:translate-y-[1px] active:shadow-none transition-all disabled:opacity-50"
             >
               {isSaving ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Проверка ключа...</span>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>ПРОВЕРКА И ПРИВЯЗКА...</span>
                 </>
               ) : (
                 <>
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>Сохранить в аккаунт</span>
+                  <Cpu className="w-3.5 h-3.5 stroke-[2]" />
+                  <span>СОХРАНИТЬ И АКТИВИРОВАТЬ</span>
                 </>
               )}
             </button>
           </div>
+
         </form>
       </div>
     </div>

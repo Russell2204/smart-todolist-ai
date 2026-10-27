@@ -10,38 +10,38 @@ export function ToastContainer() {
   if (toasts.length === 0) return null;
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-2 max-w-md w-full pointer-events-none px-4 sm:px-0">
+    <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-3 sm:px-0">
       {toasts.map((toast) => {
-        let icon = <Info className="w-5 h-5 text-blue-500 shrink-0" />;
-        let borderColor = 'border-blue-500/30';
-        let bgStyle = 'bg-slate-900/95 dark:bg-zinc-900/95 text-white';
+        let icon = <Info className="w-4 h-4 text-status-info shrink-0 stroke-[1.5]" />;
+        let borderColor = 'border-status-info/40';
 
         if (toast.type === 'success') {
-          icon = <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />;
-          borderColor = 'border-emerald-500/40';
+          icon = <CheckCircle2 className="w-4 h-4 text-status-success shrink-0 stroke-[1.5]" />;
+          borderColor = 'border-status-success/40';
         } else if (toast.type === 'warning') {
-          icon = <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0" />;
-          borderColor = 'border-amber-500/40';
+          icon = <AlertTriangle className="w-4 h-4 text-accent-amber shrink-0 stroke-[1.5]" />;
+          borderColor = 'border-accent-amber/40';
         } else if (toast.type === 'error') {
-          icon = <AlertCircle className="w-5 h-5 text-rose-400 shrink-0" />;
-          borderColor = 'border-rose-500/40';
+          icon = <AlertCircle className="w-4 h-4 text-status-danger shrink-0 stroke-[1.5]" />;
+          borderColor = 'border-status-danger/40';
         }
 
         return (
           <div
             key={toast.id}
-            className={`pointer-events-auto flex items-start gap-3 p-4 rounded-xl border ${borderColor} ${bgStyle} shadow-2xl backdrop-blur-md transition-all duration-300 animate-in fade-in slide-in-from-bottom-3`}
+            className={`pointer-events-auto flex items-start gap-2.5 p-3 rounded-[6px] border ${borderColor} bg-slot/95 text-text-primary shadow-plate backdrop-blur-md transition-all duration-150 animate-in fade-in slide-in-from-bottom-2 text-xs font-mono`}
           >
             {icon}
-            <div className="flex-1 text-sm font-medium leading-relaxed">
+            <div className="flex-1 text-[11px] font-sans font-medium text-text-primary leading-tight">
               {toast.message}
             </div>
             <button
+              type="button"
               onClick={() => removeToast(toast.id)}
-              className="text-slate-400 hover:text-white transition-colors p-1 -mr-1 -mt-1 rounded-lg"
+              className="text-text-muted hover:text-text-primary p-0.5 rounded-[2px]"
               aria-label="Закрыть"
             >
-              <X className="w-4 h-4" />
+              <X className="w-3.5 h-3.5 stroke-[1.5]" />
             </button>
           </div>
         );

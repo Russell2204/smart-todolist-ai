@@ -3,10 +3,11 @@
 import React, { useState, useEffect } from 'react';
 import { useTaskStore } from '@/store/useTaskStore';
 import { PriorityLevel, EisenhowerQuadrant } from '@/types/task';
-import { X, Calendar, Clock, Tag as TagIcon, Sparkles } from 'lucide-react';
+import { X, Calendar, Clock, Tag as TagIcon, Cpu } from 'lucide-react';
+import { playMechanicalClick, triggerHaptic } from '@/lib/audio';
 
 export function TaskEditModal() {
-  const { editingTask, setEditingTask, updateTask } = useTaskStore();
+  const { editingTask, setEditingTask, updateTask, settings } = useTaskStore();
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -34,6 +35,9 @@ export function TaskEditModal() {
     e.preventDefault();
     if (!title.trim()) return;
 
+    if (settings.soundEnabled) playMechanicalClick(280, 0.025);
+    triggerHaptic(12);
+
     const tags = tagsInput
       .split(',')
       .map((t) => t.trim())
@@ -52,71 +56,83 @@ export function TaskEditModal() {
     setEditingTask(null);
   };
 
+  const handleClose = () => {
+    if (settings.soundEnabled) playMechanicalClick(180, 0.015);
+    setEditingTask(null);
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-2xl max-w-lg w-full overflow-hidden animate-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-xs">
+      <div className="bg-surface rounded-t-[12px] sm:rounded-[8px] border border-border-subtle shadow-plate max-w-lg w-full max-h-[85vh] flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-150">
+        
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-zinc-100 dark:border-zinc-800">
-          <h2 className="text-base font-bold text-zinc-900 dark:text-zinc-50">
-            Редактирование задачи
-          </h2>
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border-subtle bg-surface select-none">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-[2px] bg-accent-amber shadow-glow-amber" />
+            <h2 className="font-display font-bold text-xs sm:text-sm tracking-wider uppercase text-text-primary">
+              ПАРАМЕТРЫ ЗАДАЧИ // РЕДАКТИРОВАНИЕ
+            </h2>
+          </div>
           <button
-            onClick={() => setEditingTask(null)}
-            className="p-1 rounded-lg text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors"
+            type="button"
+            onClick={handleClose}
+            className="w-8 h-8 flex items-center justify-center text-text-muted hover:text-text-primary rounded-[3px] hover:bg-slot transition-colors"
+            aria-label="Закрыть"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4 stroke-[1.5]" />
           </button>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-5 space-y-4 text-xs sm:text-sm">
+        {/* Scrollable Form Body */}
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 space-y-3.5 text-xs">
+          
           {/* Title */}
           <div>
-            <label className="block font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-              Название задачи *
+            <label className="block font-mono text-[11px] text-text-muted uppercase mb-1">
+              НАЗВАНИЕ ЗАДАЧИ *
             </label>
             <input
               type="text"
               required
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-violet-500"
+              className="w-full px-3 py-2 rounded-[4px] bg-slot border border-border-subtle text-text-primary focus:outline-none focus:border-accent-amber font-sans text-base sm:text-xs"
             />
           </div>
 
           {/* Description */}
           <div>
-            <label className="block font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-              Описание / контекст
+            <label className="block font-mono text-[11px] text-text-muted uppercase mb-1">
+              ДЕТАЛИ / КОНТЕКСТ
             </label>
             <textarea
-              rows={3}
+              rows={2}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Дополнительные детали, ссылки или требования..."
-              className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-violet-500"
+              placeholder="Дополнительные детали..."
+              className="w-full px-3 py-2 rounded-[4px] bg-slot border border-border-subtle text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-amber font-sans text-base sm:text-xs"
             />
           </div>
 
-          {/* Grid: Due Date & Estimated Minutes */}
+          {/* Due Date & Estimated Minutes */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block font-medium text-zinc-700 dark:text-zinc-300 mb-1 flex items-center gap-1">
-                <Calendar className="w-3.5 h-3.5 text-zinc-400" />
-                Срок (Дедлайн)
+              <label className="block font-mono text-[11px] text-text-muted uppercase mb-1 flex items-center gap-1">
+                <Calendar className="w-3 h-3 text-text-muted stroke-[1.5]" />
+                ДЕДЛАЙН
               </label>
               <input
                 type="date"
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-violet-500"
+                className="w-full px-2.5 py-1.5 rounded-[4px] bg-slot border border-border-subtle text-text-primary font-mono text-base sm:text-xs focus:outline-none focus:border-accent-amber"
               />
             </div>
 
             <div>
-              <label className="block font-medium text-zinc-700 dark:text-zinc-300 mb-1 flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5 text-zinc-400" />
-                Оценка времени (минуты)
+              <label className="block font-mono text-[11px] text-text-muted uppercase mb-1 flex items-center gap-1">
+                <Clock className="w-3 h-3 text-text-muted stroke-[1.5]" />
+                ВРЕМЯ (МИНУТЫ)
               </label>
               <input
                 type="number"
@@ -124,88 +140,122 @@ export function TaskEditModal() {
                 step="5"
                 value={estimatedMinutes || ''}
                 onChange={(e) => setEstimatedMinutes(e.target.value ? parseInt(e.target.value, 10) : undefined)}
-                className="w-full px-3 py-2 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-violet-500"
+                className="w-full px-2.5 py-1.5 rounded-[4px] bg-slot border border-border-subtle text-text-primary font-mono text-base sm:text-xs focus:outline-none focus:border-accent-amber"
               />
             </div>
           </div>
 
-          {/* Grid: Priority & Quadrant */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-                Приоритет
-              </label>
-              <select
-                value={priority}
-                onChange={(e) => setPriority(e.target.value as PriorityLevel)}
-                className="w-full px-3 py-2 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-violet-500"
-              >
-                <option value="CRITICAL">Критический (CRITICAL)</option>
-                <option value="HIGH">Высокий (HIGH)</option>
-                <option value="MEDIUM">Средний (MEDIUM)</option>
-                <option value="LOW">Низкий (LOW)</option>
-              </select>
+          {/* Priority Segmented Control */}
+          <div>
+            <label className="block font-mono text-[11px] text-text-muted uppercase mb-1">
+              УРОВЕНЬ ВАЖНОСТИ
+            </label>
+            <div className="grid grid-cols-4 gap-1 p-0.5 rounded-[4px] bg-slot border border-border-subtle">
+              {(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] as PriorityLevel[]).map((p) => {
+                const labels: Record<PriorityLevel, string> = {
+                  LOW: 'НИЗК',
+                  MEDIUM: 'СРЕД',
+                  HIGH: 'ВЫС',
+                  CRITICAL: 'КРИТ',
+                };
+                return (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => {
+                      if (settings.soundEnabled) playMechanicalClick(200, 0.015);
+                      setPriority(p);
+                    }}
+                    className={`py-1.5 rounded-[2px] font-mono text-[10px] uppercase font-semibold transition-all ${
+                      priority === p
+                        ? 'bg-border-focus text-text-primary shadow-plate'
+                        : 'text-text-muted hover:text-text-secondary'
+                    }`}
+                  >
+                    {labels[p]}
+                  </button>
+                );
+              })}
             </div>
+          </div>
 
-            <div>
-              <label className="block font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-                Квадрант Эйзенхауэра
-              </label>
-              <select
-                value={quadrant}
-                onChange={(e) => setQuadrant(e.target.value as EisenhowerQuadrant)}
-                className="w-full px-3 py-2 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-violet-500"
-              >
-                <option value="DO_FIRST">Q1: Сделать сейчас (Срочно и Важно)</option>
-                <option value="SCHEDULE">Q2: Запланировать (Важно, не срочно)</option>
-                <option value="DELEGATE">Q3: Делегировать (Срочно, не важно)</option>
-                <option value="DELETE">Q4: Исключить (Не важно, не срочно)</option>
-              </select>
+          {/* Quadrant Segmented Control */}
+          <div>
+            <label className="block font-mono text-[11px] text-text-muted uppercase mb-1">
+              СЕКТОР ЭЙЗЕНХАУЭРА
+            </label>
+            <div className="grid grid-cols-4 gap-1 p-0.5 rounded-[4px] bg-slot border border-border-subtle">
+              {(['DO_FIRST', 'SCHEDULE', 'DELEGATE', 'DELETE'] as EisenhowerQuadrant[]).map((q) => {
+                const labels: Record<EisenhowerQuadrant, string> = {
+                  DO_FIRST: 'A // ФОКУС',
+                  SCHEDULE: 'B // ПЛАН',
+                  DELEGATE: 'C // ПОРУЧИТЬ',
+                  DELETE: 'D // СБРОС',
+                };
+                return (
+                  <button
+                    key={q}
+                    type="button"
+                    onClick={() => {
+                      if (settings.soundEnabled) playMechanicalClick(200, 0.015);
+                      setQuadrant(q);
+                    }}
+                    className={`py-1.5 rounded-[2px] font-mono text-[10px] font-bold uppercase transition-all ${
+                      quadrant === q
+                        ? 'bg-accent-amber/20 border border-accent-amber/40 text-accent-amber'
+                        : 'text-text-muted hover:text-text-secondary'
+                    }`}
+                  >
+                    {labels[q]}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
           {/* Tags */}
           <div>
-            <label className="block font-medium text-zinc-700 dark:text-zinc-300 mb-1 flex items-center gap-1">
-              <TagIcon className="w-3.5 h-3.5 text-zinc-400" />
-              Теги (через запятую)
+            <label className="block font-mono text-[11px] text-text-muted uppercase mb-1 flex items-center gap-1">
+              <TagIcon className="w-3 h-3 text-text-muted stroke-[1.5]" />
+              ТЕГИ (ЧЕРЕЗ ЗАПЯТУЮ)
             </label>
             <input
               type="text"
               value={tagsInput}
               onChange={(e) => setTagsInput(e.target.value)}
               placeholder="работа, финансы, отчет"
-              className="w-full px-3.5 py-2 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-violet-500"
+              className="w-full px-2.5 py-1.5 rounded-[4px] bg-slot border border-border-subtle text-text-primary font-mono text-base sm:text-xs focus:outline-none focus:border-accent-amber"
             />
           </div>
 
           {/* AI Metadata Display */}
           {editingTask.aiReasoning && (
-            <div className="p-3 rounded-xl bg-violet-50 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-800/60 text-xs">
-              <div className="flex items-center gap-1 font-semibold text-violet-700 dark:text-violet-300 mb-1">
-                <Sparkles className="w-3.5 h-3.5" />
-                Обоснование Gemini (Score: {editingTask.aiScore}/100)
+            <div className="p-2.5 rounded-[4px] bg-slot border border-border-subtle font-mono text-[11px]">
+              <div className="flex items-center gap-1.5 font-bold text-accent-amber mb-1 uppercase text-[10px]">
+                <Cpu className="w-3 h-3 stroke-[1.5]" />
+                ФАКТОРЫ GEMINI (SCORE: {editingTask.aiScore}/100):
               </div>
-              <p className="text-zinc-600 dark:text-zinc-300">{editingTask.aiReasoning}</p>
+              <p className="text-text-secondary leading-relaxed font-sans">{editingTask.aiReasoning}</p>
             </div>
           )}
 
-          {/* Actions */}
-          <div className="flex items-center justify-end gap-2 pt-3 border-t border-zinc-100 dark:border-zinc-800">
+          {/* Sticky Actions */}
+          <div className="sticky bottom-0 pt-3 pb-1 bg-surface border-t border-border-subtle flex items-center justify-end gap-2">
             <button
               type="button"
-              onClick={() => setEditingTask(null)}
-              className="px-4 py-2 rounded-xl text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 font-medium transition-colors"
+              onClick={handleClose}
+              className="px-3.5 py-2 rounded-[4px] font-display text-xs tracking-wider uppercase text-text-muted hover:text-text-primary hover:bg-slot transition-colors"
             >
               Отмена
             </button>
             <button
               type="submit"
-              className="px-5 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-medium shadow-md shadow-violet-600/25 transition-colors"
+              className="px-4 py-2 rounded-[4px] font-display font-semibold text-xs tracking-wider uppercase bg-accent-amber hover:bg-accent-amber-hover text-slot shadow-tactile-dark active:translate-y-[1px] active:shadow-none transition-all"
             >
               Сохранить изменения
             </button>
           </div>
+
         </form>
       </div>
     </div>

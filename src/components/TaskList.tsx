@@ -4,8 +4,8 @@ import React from 'react';
 import { useTaskStore } from '@/store/useTaskStore';
 import { TaskCard } from './TaskCard';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, SearchX, Sparkles, Plus } from 'lucide-react';
 import { PriorityLevel } from '@/types/task';
+import { playMechanicalClick, triggerHaptic } from '@/lib/audio';
 
 const PRIORITY_ORDER: Record<PriorityLevel, number> = {
   CRITICAL: 4,
@@ -27,6 +27,7 @@ export function TaskList() {
     setFilterStatus,
     setFilterTag,
     setFilterPriority,
+    settings,
   } = useTaskStore();
 
   // 1. Filter tasks
@@ -55,13 +56,23 @@ export function TaskList() {
 
   // 2. Sort filtered tasks
   const sortedTasks = [...filteredTasks].sort((a, b) => {
-    // Completed tasks always at bottom unless filtering specifically for completed
+    // Completed tasks at the bottom unless filtering specifically for completed
     if (filterStatus === 'all' && a.isCompleted !== b.isCompleted) {
       return a.isCompleted ? 1 : -1;
     }
 
     if (sortMode === 'aiScore') {
-      return (b.aiScore || 0) - (a.aiScore || 0);
+      const scoreA = a.aiScore ?? -1;
+      const scoreB = b.aiScore ?? -1;
+      if (scoreA !== scoreB) return scoreB - scoreA;
+      // Fallback to priority
+      return PRIORITY_ORDER[b.priority] - PRIORITY_ORDER[a.priority];
+    }
+
+    if (sortMode === 'priority') {
+      const diff = PRIORITY_ORDER[b.priority] - PRIORITY_ORDER[a.priority];
+      if (diff !== 0) return diff;
+      return (b.aiScore ?? 0) - (a.aiScore ?? 0);
     }
 
     if (sortMode === 'dueDate') {
@@ -71,10 +82,6 @@ export function TaskList() {
       return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
     }
 
-    if (sortMode === 'priority') {
-      return PRIORITY_ORDER[b.priority] - PRIORITY_ORDER[a.priority];
-    }
-
     if (sortMode === 'createdAt') {
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     }
@@ -82,51 +89,62 @@ export function TaskList() {
     return 0;
   });
 
-  // Empty state handling
+  // Blueprint Vector Empty States
   if (sortedTasks.length === 0) {
     const isFiltered = searchQuery || filterStatus !== 'all' || filterPriority !== 'all' || filterTag;
 
     return (
-      <div className="flex flex-col items-center justify-center p-12 text-center bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 my-4">
+      <div className="flex flex-col items-center justify-center p-8 sm:p-12 text-center bg-surface rounded-[8px] border border-border-subtle my-3 shadow-plate">
         {isFiltered ? (
           <>
-            <div className="w-12 h-12 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-400 mb-3">
-              <SearchX className="w-6 h-6" />
+            {/* Blueprint 0 Matches Graphic */}
+            <div className="w-16 h-16 rounded-[4px] bg-slot border border-border-subtle flex flex-col items-center justify-center font-mono text-text-muted mb-3 relative">
+              <span className="text-[10px] tracking-widest text-accent-amber font-bold">00</span>
+              <div className="w-8 h-[1px] bg-border-focus my-1" />
+              <span className="text-[9px] uppercase tracking-wider text-text-muted">MATCH</span>
             </div>
-            <h3 className="text-base font-semibold text-zinc-800 dark:text-zinc-200">
-              Ничего не найдено
+            <h3 className="font-display font-semibold text-sm tracking-wider uppercase text-text-primary">
+              [ 0 MATCHES FOUND ]
             </h3>
-            <p className="text-xs text-zinc-500 max-w-sm mt-1">
-              Попробуйте изменить поисковый запрос или сбросить активные фильтры.
+            <p className="text-xs text-text-secondary max-w-sm mt-1.5 font-sans leading-relaxed">
+              По запросу ничего не найдено. Измените параметры поиска или сбросьте активные фильтры.
             </p>
             <button
+              type="button"
               onClick={() => {
+                if (settings.soundEnabled) playMechanicalClick(200, 0.015);
                 setSearchQuery('');
                 setFilterStatus('all');
                 setFilterPriority('all');
                 setFilterTag(null);
               }}
-              className="mt-4 px-4 py-2 rounded-xl text-xs font-medium bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 transition-colors"
+              className="mt-4 px-3.5 py-1.5 rounded-[4px] font-display font-semibold text-xs tracking-wider uppercase bg-slot hover:bg-border-subtle text-text-primary border border-border-subtle transition-all"
             >
               Сбросить фильтры
             </button>
           </>
         ) : (
           <>
-            <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-500 flex items-center justify-center mb-3">
-              <CheckCircle2 className="w-6 h-6" />
+            {/* Blueprint Queue Clear Graphic */}
+            <div className="w-16 h-16 rounded-[4px] bg-slot border border-border-subtle flex flex-col items-center justify-center font-mono text-text-muted mb-3">
+              <span className="w-2 h-2 rounded-[2px] bg-status-success shadow-glow-green mb-1" />
+              <span className="text-[9px] uppercase tracking-wider text-text-secondary font-bold">IDLE</span>
             </div>
-            <h3 className="text-base font-semibold text-zinc-800 dark:text-zinc-200">
-              Список пуст!
+            <h3 className="font-display font-semibold text-sm tracking-wider uppercase text-text-primary">
+              [ SYSTEM IDLE // QUEUE CLEAR ]
             </h3>
-            <p className="text-xs text-zinc-500 max-w-sm mt-1">
-              Все текущие задачи выполнены. Добавьте новую задачу с помощью поля выше или восстановите демонстрационные данные.
+            <p className="text-xs text-text-secondary max-w-sm mt-1.5 font-sans leading-relaxed">
+              Очередь задач пуста. Все текущие цели закрыты. Введите новую задачу в поле выше или загрузите тестовый набор.
             </p>
             <button
-              onClick={resetToSampleData}
-              className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-violet-50 dark:bg-violet-950/40 hover:bg-violet-100 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-800 transition-colors"
+              type="button"
+              onClick={() => {
+                if (settings.soundEnabled) playMechanicalClick(240, 0.02);
+                triggerHaptic(10);
+                resetToSampleData();
+              }}
+              className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-[4px] font-display font-semibold text-xs tracking-wider uppercase bg-accent-amber hover:bg-accent-amber-hover active:translate-y-[1px] text-slot shadow-tactile-dark transition-all"
             >
-              <Sparkles className="w-3.5 h-3.5 text-violet-500" />
               Загрузить примеры задач
             </button>
           </>
@@ -135,20 +153,22 @@ export function TaskList() {
     );
   }
 
+  const isReduced = settings.reducedMotion;
+
   return (
-    <div className="flex flex-col gap-3 my-2">
+    <div className="flex flex-col gap-2 my-2">
       <AnimatePresence mode="popLayout">
         {sortedTasks.map((task) => (
           <motion.div
             key={task.id}
-            layout
-            initial={{ opacity: 0, y: 12, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            transition={{
+            layout={!isReduced}
+            initial={isReduced ? false : { opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={isReduced ? { opacity: 0 } : { opacity: 0, scale: 0.98 }}
+            transition={isReduced ? { duration: 0.001 } : {
               type: 'spring',
               stiffness: 450,
-              damping: 32,
+              damping: 34,
               mass: 0.8,
             }}
           >

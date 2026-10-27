@@ -6,7 +6,8 @@ import {
   loadStoredSettings, 
   saveStoredSettings, 
   AppSettings, 
-  INITIAL_TASKS 
+  INITIAL_TASKS,
+  DEFAULT_SETTINGS
 } from '@/lib/storage';
 
 export interface UserProfile {
@@ -99,6 +100,8 @@ interface TaskState {
   resetToSampleData: () => void;
   clearCompleted: () => void;
   updateSettings: (newSettings: Partial<AppSettings>) => void;
+  toggleSound: () => void;
+  toggleReducedMotion: () => void;
   
   // Toasts
   addToast: (message: string, type?: ToastMessage['type']) => void;
@@ -108,12 +111,7 @@ interface TaskState {
 
 export const useTaskStore = create<TaskState>((set, get) => {
   const initialTasks = typeof window !== 'undefined' ? loadStoredTasks() : INITIAL_TASKS;
-  const initialSettings = typeof window !== 'undefined' ? loadStoredSettings() : {
-    apiKey: '',
-    model: 'gemini-2.5-flash',
-    autoAnalyzeDefault: true,
-    theme: 'system' as const,
-  };
+  const initialSettings = typeof window !== 'undefined' ? loadStoredSettings() : DEFAULT_SETTINGS;
 
   return {
     tasks: initialTasks,
@@ -731,6 +729,22 @@ export const useTaskStore = create<TaskState>((set, get) => {
         return { settings: updated };
       });
       get().addToast('Настройки сохранены', 'success');
+    },
+
+    toggleSound: () => {
+      set((state) => {
+        const updated = { ...state.settings, soundEnabled: !state.settings.soundEnabled };
+        saveStoredSettings(updated);
+        return { settings: updated };
+      });
+    },
+
+    toggleReducedMotion: () => {
+      set((state) => {
+        const updated = { ...state.settings, reducedMotion: !state.settings.reducedMotion };
+        saveStoredSettings(updated);
+        return { settings: updated };
+      });
     },
   };
 });

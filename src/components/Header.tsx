@@ -1,224 +1,231 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useTaskStore } from '@/store/useTaskStore';
 import { 
-  Sparkles, 
-  LayoutList, 
-  Grid2X2, 
-  Settings, 
-  Sun, 
-  Moon, 
-  CheckCircle,
-  BrainCircuit,
-  User,
-  LogIn,
-  LogOut,
-  Key,
-  ShieldCheck,
-  ChevronDown
+  List, 
+  LayoutGrid, 
+  Settings2, 
+  KeyRound, 
+  User, 
+  LogOut, 
+  Volume2, 
+  VolumeX, 
+  Zap, 
+  ZapOff,
+  ChevronDown 
 } from 'lucide-react';
+import { playMechanicalClick, triggerHaptic } from '@/lib/audio';
 
 export function Header() {
   const { 
-    tasks, 
     viewMode, 
     setViewMode, 
     setIsSettingsOpen, 
     settings, 
-    updateSettings,
-    tickCooldown,
-    cooldownRemaining,
     currentUser,
     isAuthenticated,
     isAuthLoading,
     checkAuthStatus,
     setIsAuthModalOpen,
     setIsApiKeyModalOpen,
-    logoutUser
+    logoutUser,
+    toggleSound,
+    toggleReducedMotion,
   } = useTaskStore();
 
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Check auth session on startup
   useEffect(() => {
     checkAuthStatus();
   }, [checkAuthStatus]);
 
-  // Cooldown interval timer
+  // Close dropdown on outside click
   useEffect(() => {
-    if (cooldownRemaining <= 0) return;
-    const interval = setInterval(() => {
-      tickCooldown();
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [cooldownRemaining, tickCooldown]);
-
-  // Handle theme
-  useEffect(() => {
-    const root = document.documentElement;
-    if (settings.theme === 'dark') {
-      root.classList.add('dark');
-    } else if (settings.theme === 'light') {
-      root.classList.remove('dark');
-    } else {
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      if (prefersDark) {
-        root.classList.add('dark');
-      } else {
-        root.classList.remove('dark');
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setIsUserMenuOpen(false);
       }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Sync reducedMotion with HTML class
+  useEffect(() => {
+    if (settings.reducedMotion) {
+      document.documentElement.classList.add('no-motion');
+    } else {
+      document.documentElement.classList.remove('no-motion');
     }
-  }, [settings.theme]);
-
-  const toggleTheme = () => {
-    const nextTheme = settings.theme === 'dark' ? 'light' : 'dark';
-    updateSettings({ theme: nextTheme });
-  };
-
-  const totalTasks = tasks.length;
-  const completedTasks = tasks.filter((t) => t.isCompleted).length;
-  const completionPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+  }, [settings.reducedMotion]);
 
   const hasApiKey = currentUser?.hasApiKey || !!settings.apiKey;
 
+  const handleModeSwitch = (mode: 'list' | 'matrix') => {
+    if (settings.soundEnabled) playMechanicalClick(240, 0.02);
+    triggerHaptic(8);
+    setViewMode(mode);
+  };
+
+  const handleSoundToggle = () => {
+    if (!settings.soundEnabled) playMechanicalClick(320, 0.02);
+    triggerHaptic(8);
+    toggleSound();
+  };
+
+  const handleMotionToggle = () => {
+    if (settings.soundEnabled) playMechanicalClick(200, 0.02);
+    triggerHaptic(8);
+    toggleReducedMotion();
+  };
+
   return (
-    <header className="sticky top-0 z-40 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800 transition-colors">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
-        {/* Brand */}
-        <div className="flex items-center gap-3">
-          <div className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-violet-600 to-fuchsia-500 text-white shadow-lg shadow-violet-500/20">
-            <BrainCircuit className="w-5 h-5" />
-            <span className="absolute -top-1 -right-1 flex h-3 w-3">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+    <header className="sticky top-0 z-40 h-12 bg-surface/95 backdrop-blur-md border-b border-border-subtle transition-colors">
+      <div className="max-w-6xl mx-auto px-3 sm:px-6 h-full flex items-center justify-between gap-2 sm:gap-4">
+        
+        {/* Brand / Logo */}
+        <div className="flex items-center gap-2 select-none">
+          <div className="w-2.5 h-2.5 rounded-[2px] bg-accent-amber shadow-glow-amber" />
+          <div className="flex items-baseline gap-1.5">
+            <span className="font-display font-bold text-sm sm:text-base tracking-wider text-text-primary uppercase">
+              Smart·Todo
             </span>
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-base sm:text-lg font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-                Smart ToDoList
-              </h1>
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-violet-500/10 text-violet-700 dark:text-violet-300 border border-violet-500/20">
-                <Sparkles className="w-3 h-3 text-violet-500" />
-                Gemini 2.5
-              </span>
-            </div>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 hidden md:block">
-              Vercel + Neon Postgres + Gemini AI
-            </p>
+            <span className="font-mono text-[10px] text-text-muted px-1 py-0.5 rounded-[2px] border border-border-subtle bg-slot hidden xs:inline">
+              AI 2.5
+            </span>
           </div>
         </div>
 
-        {/* Center / Right controls */}
-        <div className="flex items-center gap-2 sm:gap-3">
-          {/* Progress Indicator */}
-          <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs">
-            <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
-            <span className="text-zinc-600 dark:text-zinc-300 font-medium">
-              {completedTasks} из {totalTasks}
-            </span>
-            <div className="w-14 h-1.5 rounded-full bg-zinc-200 dark:bg-zinc-800 overflow-hidden ml-1">
-              <div 
-                className="h-full bg-emerald-500 transition-all duration-500"
-                style={{ width: `${completionPercentage}%` }}
-              />
-            </div>
-          </div>
-
-          {/* View Mode Toggle */}
-          <div className="flex items-center p-1 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
-            <button
-              onClick={() => setViewMode('list')}
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                viewMode === 'list'
-                  ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-50 shadow-sm'
-                  : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
-              }`}
-              title="Классический список задач"
-            >
-              <LayoutList className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Список</span>
-            </button>
-            <button
-              onClick={() => setViewMode('matrix')}
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                viewMode === 'matrix'
-                  ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-50 shadow-sm'
-                  : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
-              }`}
-              title="Матрица Эйзенхауэра 2x2"
-            >
-              <Grid2X2 className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Матрица</span>
-            </button>
-          </div>
-
-          {/* API Key Status Pill */}
+        {/* Center: Tactile Rocker Switch (Mode Toggle) */}
+        <nav 
+          aria-label="Режимы отображения"
+          className="flex items-center p-0.5 rounded-[6px] bg-slot border border-border-subtle shadow-sunken"
+        >
           <button
-            onClick={() => setIsApiKeyModalOpen(true)}
-            className={`hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-medium border transition-all ${
-              hasApiKey
-                ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border-emerald-500/30'
-                : 'bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border-amber-500/30 animate-pulse'
+            type="button"
+            onClick={() => handleModeSwitch('list')}
+            aria-pressed={viewMode === 'list'}
+            className={`flex items-center gap-1 px-2 sm:px-3 py-1 rounded-[4px] text-xs font-display tracking-wider uppercase transition-all ${
+              viewMode === 'list'
+                ? 'bg-border-subtle text-text-primary font-semibold shadow-plate border border-border-focus'
+                : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.03]'
             }`}
-            title={hasApiKey ? 'Google API Key настроен' : 'Нажмите, чтобы указать свой Google Gemini API Key'}
+            title="Режим списка задач"
           >
-            <Key className="w-3 h-3" />
-            <span>{hasApiKey ? 'API Key активен' : 'Указать API Key'}</span>
-            <span className={`w-1.5 h-1.5 rounded-full ${hasApiKey ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+            <List className="w-3.5 h-3.5 stroke-[1.5]" />
+            <span className="hidden sm:inline">Список</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleModeSwitch('matrix')}
+            aria-pressed={viewMode === 'matrix'}
+            className={`flex items-center gap-1 px-2 sm:px-3 py-1 rounded-[4px] text-xs font-display tracking-wider uppercase transition-all ${
+              viewMode === 'matrix'
+                ? 'bg-border-subtle text-text-primary font-semibold shadow-plate border border-border-focus'
+                : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.03]'
+            }`}
+            title="Матрица Эйзенхауэра"
+          >
+            <LayoutGrid className="w-3.5 h-3.5 stroke-[1.5]" />
+            <span className="hidden sm:inline">Матрица</span>
+          </button>
+        </nav>
+
+        {/* Right Section: System Status & User Actions */}
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          
+          {/* Key Status LED Pill */}
+          <button
+            type="button"
+            onClick={() => setIsApiKeyModalOpen(true)}
+            className={`hidden md:inline-flex items-center gap-1.5 px-2 py-1 rounded-[4px] font-mono text-[11px] border transition-all ${
+              hasApiKey
+                ? 'bg-slot text-text-secondary border-border-subtle hover:border-border-focus'
+                : 'bg-slot text-accent-amber border-border-amberDim hover:border-accent-amber'
+            }`}
+            title={hasApiKey ? 'Google Gemini API ключ активен' : 'Требуется привязать Google Gemini API ключ'}
+          >
+            <span 
+              className={`w-1.5 h-1.5 rounded-full ${
+                hasApiKey 
+                  ? 'bg-status-success shadow-glow-green' 
+                  : 'bg-accent-amber animate-pulse shadow-glow-amber'
+              }`} 
+            />
+            <span>{hasApiKey ? 'KEY READY' : 'SET KEY'}</span>
           </button>
 
-          {/* Theme Toggle */}
+          {/* Sound Toggle [ 🔊 / 🔇 ] */}
           <button
-            onClick={toggleTheme}
-            className="p-2 rounded-xl text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900 border border-transparent hover:border-zinc-200 dark:hover:border-zinc-800 transition-all"
-            aria-label="Сменить тему"
-            title="Переключить тему оформления"
+            type="button"
+            onClick={handleSoundToggle}
+            className="w-8 h-8 rounded-[4px] flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-border-subtle/50 transition-colors"
+            title={settings.soundEnabled ? 'Тактильный звук: ВКЛ (нажмите для выкл)' : 'Тактильный звук: ВЫКЛ'}
+            aria-label="Переключить тактильный звук"
           >
-            {settings.theme === 'dark' ? (
-              <Sun className="w-4 h-4 text-amber-400" />
+            {settings.soundEnabled ? (
+              <Volume2 className="w-3.5 h-3.5 stroke-[1.5] text-accent-amber" />
             ) : (
-              <Moon className="w-4 h-4 text-zinc-600" />
+              <VolumeX className="w-3.5 h-3.5 stroke-[1.5] text-text-muted" />
             )}
           </button>
 
-          {/* Settings Button */}
+          {/* Reduced Motion Toggle [ ⚡ ] */}
           <button
-            onClick={() => setIsSettingsOpen(true)}
-            className="p-2 rounded-xl text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900 border border-transparent hover:border-zinc-200 dark:hover:border-zinc-800 transition-all"
-            aria-label="Настройки"
-            title="Настройки"
+            type="button"
+            onClick={handleMotionToggle}
+            className="w-8 h-8 rounded-[4px] flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-border-subtle/50 transition-colors"
+            title={settings.reducedMotion ? 'Анимации: ВЫКЛ (Zero-Latency режим активен)' : 'Анимации: ВКЛ'}
+            aria-label="Режим отключения анимаций"
           >
-            <Settings className="w-4 h-4" />
+            {settings.reducedMotion ? (
+              <ZapOff className="w-3.5 h-3.5 stroke-[1.5] text-accent-amber" />
+            ) : (
+              <Zap className="w-3.5 h-3.5 stroke-[1.5] text-text-muted" />
+            )}
           </button>
 
-          {/* Auth Button or User Menu */}
+          {/* Settings */}
+          <button
+            type="button"
+            onClick={() => setIsSettingsOpen(true)}
+            className="w-8 h-8 rounded-[4px] flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-border-subtle/50 transition-colors"
+            title="Системные настройки"
+            aria-label="Настройки"
+          >
+            <Settings2 className="w-3.5 h-3.5 stroke-[1.5]" />
+          </button>
+
+          {/* User Account / Auth */}
           {!isAuthLoading && (
             isAuthenticated && currentUser ? (
-              <div className="relative">
+              <div className="relative" ref={dropdownRef}>
                 <button
                   type="button"
                   onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                  className="flex items-center gap-2 pl-2 pr-2.5 py-1.5 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 text-xs font-semibold text-zinc-800 dark:text-zinc-200 transition-all"
+                  className="flex items-center gap-1.5 pl-1.5 pr-2 py-1 rounded-[4px] bg-slot border border-border-subtle hover:border-border-focus text-xs font-mono text-text-primary transition-all"
+                  aria-expanded={isUserMenuOpen}
                 >
-                  <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-violet-600 to-indigo-600 text-white flex items-center justify-center font-bold text-[11px]">
+                  <div className="w-5 h-5 rounded-[2px] bg-border-focus text-text-primary flex items-center justify-center font-bold text-[10px]">
                     {(currentUser.name || currentUser.email)[0].toUpperCase()}
                   </div>
-                  <span className="hidden sm:inline max-w-[100px] truncate">
+                  <span className="hidden sm:inline max-w-[80px] truncate text-[11px]">
                     {currentUser.name || currentUser.email.split('@')[0]}
                   </span>
-                  <ChevronDown className="w-3 h-3 text-zinc-400" />
+                  <ChevronDown className="w-3 h-3 text-text-muted" />
                 </button>
 
                 {/* Dropdown Menu */}
                 {isUserMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-56 p-2 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-xl z-50 animate-in fade-in zoom-in-95 text-xs">
-                    <div className="px-3 py-2 border-b border-zinc-100 dark:border-zinc-800 mb-1">
-                      <p className="font-semibold text-zinc-900 dark:text-zinc-100 truncate">
+                  <div className="absolute right-0 mt-1.5 w-56 p-1.5 rounded-[6px] bg-surface border border-border-subtle shadow-plate z-50 text-xs">
+                    <div className="px-2.5 py-1.5 border-b border-border-subtle mb-1">
+                      <p className="font-semibold text-text-primary truncate">
                         {currentUser.name || 'Пользователь'}
                       </p>
-                      <p className="text-[11px] text-zinc-500 truncate">
+                      <p className="font-mono text-[10px] text-text-muted truncate">
                         {currentUser.email}
                       </p>
                     </div>
@@ -229,15 +236,17 @@ export function Header() {
                         setIsUserMenuOpen(false);
                         setIsApiKeyModalOpen(true);
                       }}
-                      className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                      className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-[4px] text-text-secondary hover:text-text-primary hover:bg-border-subtle/50 transition-colors font-mono text-[11px]"
                     >
-                      <Key className="w-3.5 h-3.5 text-violet-500" />
+                      <KeyRound className="w-3.5 h-3.5 stroke-[1.5] text-accent-amber" />
                       <span>Google API Key</span>
-                      {hasApiKey ? (
-                        <span className="ml-auto text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">Настроен</span>
-                      ) : (
-                        <span className="ml-auto text-[10px] text-amber-600 dark:text-amber-400 font-semibold">Не указан</span>
-                      )}
+                      <span className={`ml-auto text-[9px] uppercase px-1 py-0.5 rounded-[2px] border ${
+                        hasApiKey 
+                          ? 'border-status-success/30 text-status-success' 
+                          : 'border-accent-amber/30 text-accent-amber'
+                      }`}>
+                        {hasApiKey ? 'Готов' : 'Не задан'}
+                      </span>
                     </button>
 
                     <button
@@ -246,13 +255,13 @@ export function Header() {
                         setIsUserMenuOpen(false);
                         setIsSettingsOpen(true);
                       }}
-                      className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                      className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-[4px] text-text-secondary hover:text-text-primary hover:bg-border-subtle/50 transition-colors font-mono text-[11px]"
                     >
-                      <Settings className="w-3.5 h-3.5 text-zinc-500" />
-                      <span>Параметры и модель</span>
+                      <Settings2 className="w-3.5 h-3.5 stroke-[1.5]" />
+                      <span>Параметры модели</span>
                     </button>
 
-                    <div className="my-1 border-t border-zinc-100 dark:border-zinc-800" />
+                    <div className="my-1 border-t border-border-subtle" />
 
                     <button
                       type="button"
@@ -260,27 +269,27 @@ export function Header() {
                         setIsUserMenuOpen(false);
                         logoutUser();
                       }}
-                      className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"
+                      className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-[4px] text-status-danger hover:bg-status-danger/10 transition-colors font-mono text-[11px]"
                     >
-                      <LogOut className="w-3.5 h-3.5" />
+                      <LogOut className="w-3.5 h-3.5 stroke-[1.5]" />
                       <span>Выйти из аккаунта</span>
                     </button>
                   </div>
                 )}
               </div>
             ) : (
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1">
                 <button
                   type="button"
                   onClick={() => setIsAuthModalOpen(true, 'login')}
-                  className="px-3 py-1.5 rounded-xl text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                  className="px-2.5 py-1 rounded-[4px] text-xs font-display tracking-wider uppercase text-text-secondary hover:text-text-primary hover:bg-border-subtle/40 transition-colors"
                 >
                   Вход
                 </button>
                 <button
                   type="button"
                   onClick={() => setIsAuthModalOpen(true, 'register')}
-                  className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-violet-600 hover:bg-violet-500 text-white shadow-sm shadow-violet-600/25 transition-colors"
+                  className="px-2.5 py-1 rounded-[4px] text-xs font-display font-semibold tracking-wider uppercase bg-accent-amber hover:bg-accent-amber-hover active:translate-y-[1px] text-slot shadow-tactile-dark transition-all"
                 >
                   Регистрация
                 </button>
